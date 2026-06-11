@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block title %}Вход{% endblock %}
+
+{% block content %}
+<section class="auth-panel">
+    <h1>Войти</h1>
+    <form method="post" class="auth-form">
+        {% csrf_token %}
+        {% for field in form %}
+            <label>
+                <span>{{ field.label }}</span>
+                {{ field }}
+                {% for error in field.errors %}
+                    <strong class="error">{{ error }}</strong>
+                {% endfor %}
+            </label>
+        {% endfor %}
+        {% for error in form.non_field_errors %}
+            <strong class="error">{{ error }}</strong>
+        {% endfor %}
+        <button type="submit">Войти</button>
+    </form>
+    <p class="muted">Нет аккаунта? <a href="{% url 'signup' %}">Зарегистрироваться</a></p>
+</section>
+{% endblock %}

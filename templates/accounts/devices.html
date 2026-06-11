@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block title %}Устройства на сайте{% endblock %}
+
+{% block content %}
+<section class="wide-panel">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow dark">Администрирование</p>
+            <h1>Устройства на сайте</h1>
+        </div>
+        <span class="counter">{{ visitors|length }}</span>
+    </div>
+
+    <div class="device-table-wrap">
+        <table class="device-table">
+            <thead>
+                <tr>
+                    <th>Статус</th>
+                    <th>Пользователь</th>
+                    <th>IP</th>
+                    <th>Устройство / браузер</th>
+                    <th>Первый визит</th>
+                    <th>Последняя активность</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for visitor in visitors %}
+                    <tr>
+                        <td>
+                            {% if visitor.last_seen >= online_after %}
+                                <span class="status online">Онлайн</span>
+                            {% else %}
+                                <span class="status offline">Был</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if visitor.user %}
+                                {{ visitor.user.username }}
+                            {% else %}
+                                Гость
+                            {% endif %}
+                        </td>
+                        <td>{{ visitor.ip_address|default:'Неизвестно' }}</td>
+                        <td class="user-agent">{{ visitor.user_agent|default:'Неизвестно' }}</td>
+                        <td>{{ visitor.first_seen|date:'d.m.Y H:i' }}</td>
+                        <td>{{ visitor.last_seen|date:'d.m.Y H:i:s' }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" class="empty">Пока нет посещений.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

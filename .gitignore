@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+.venv/
+.tmp/
+db.sqlite3
+staticfiles/
+tools/
+tor-data/
+tor-hidden-service/
+tor-pt/
+torrc
+*.pyproj
+*.pyproj.user
+.vs/
