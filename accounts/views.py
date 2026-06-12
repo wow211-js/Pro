@@ -53,7 +53,8 @@ def profile(request):
         elif 'display_name' in request.POST:
             edit_form = ProfileEditForm(request.POST)
             if edit_form.is_valid():
-                profile_obj.display_name = edit_form.cleaned_data['display_name']
+                dn = edit_form.cleaned_data['display_name'].strip()
+                profile_obj.display_name = dn if dn else 'Гость'
                 profile_obj.save()
                 messages.success(request, 'Имя обновлено.')
                 return redirect('profile')
