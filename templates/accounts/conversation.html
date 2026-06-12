@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ partner.username }}{% endblock %}
+
+{% block content %}
+<section class="wide-panel dm-panel">
+    <div class="dm-conv-header">
+        <a href="{% url 'inbox' %}" class="back-link">← Назад</a>
+        <div class="dm-avatar">{{ partner.username|first|upper }}</div>
+        <strong>{{ partner.username }}</strong>
+    </div>
+
+    <div class="chat-list dm-messages" id="dm-list">
+        {% for msg in msgs %}
+            <div class="dm-msg {% if msg.sender == user %}dm-msg-out{% else %}dm-msg-in{% endif %}">
+                <p>{{ msg.text|linebreaksbr }}</p>
+                <time>{{ msg.created_at|date:'d.m H:i' }}</time>
+            </div>
+        {% empty %}
+            <p class="empty-chat">Начните диалог!</p>
+        {% endfor %}
+    </div>
+
+    <form method="post" class="chat-form">
+        {% csrf_token %}
+        {{ form.text }}
+        <button type="submit">Отправить</button>
+    </form>
+</section>
+
+<script>
+    var list = document.getElementById('dm-list');
+    if (list) list.scrollTop = list.scrollHeight;
+</script>
+{% endblock %}
