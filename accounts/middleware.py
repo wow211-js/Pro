@@ -1,6 +1,6 @@
 from django.db import OperationalError
 
-from .models import VisitorSession
+from .models import VisitorSession, hash_ip
 
 
 class VisitorTrackingMiddleware:
@@ -20,14 +20,13 @@ class VisitorTrackingMiddleware:
             if not request.session.session_key:
                 request.session.create()
 
-            ip_address = self._get_ip_address(request)
+            ip_hash = hash_ip(self._get_ip_address(request))
 
             VisitorSession.objects.update_or_create(
                 session_key=request.session.session_key,
                 defaults={
                     'user': request.user,
-                    'ip_address': ip_address,
-                    'user_agent': request.META.get('HTTP_USER_AGENT', '')[:1000],
+                    'ip_hash': ip_hash or '',
                 },
             )
         except OperationalError:
