@@ -67,3 +67,29 @@ class ChatMessage(models.Model):
         if self.user:
             return self.user.username
         return self.guest_name or 'Гость'
+
+
+class DirectMessage(models.Model):
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name='Отправитель',
+        related_name='sent_messages',
+        on_delete=models.CASCADE,
+    )
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name='Получатель',
+        related_name='received_messages',
+        on_delete=models.CASCADE,
+    )
+    text = models.TextField('Сообщение', max_length=1000)
+    created_at = models.DateTimeField('Дата отправки', auto_now_add=True)
+    is_read = models.BooleanField('Прочитано', default=False)
+
+    class Meta:
+        ordering = ['created_at']
+        verbose_name = 'личное сообщение'
+        verbose_name_plural = 'личные сообщения'
+
+    def __str__(self):
+        return f'{self.sender.username} → {self.recipient.username}: {self.text[:40]}'
