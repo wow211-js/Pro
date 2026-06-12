@@ -5,6 +5,7 @@ from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.shortcuts import redirect, render
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from .forms import ChatMessageForm, SignUpForm
 from .models import ChatMessage, VisitorSession
@@ -28,8 +29,16 @@ def signup(request):
     return render(request, 'accounts/signup.html', {'form': form})
 
 
+def _auto_clear_chat():
+    """Delete messages older than 24 hours."""
+    cutoff = timezone.now() - timedelta(hours=24)
+    ChatMessage.objects.filter(created_at__lt=cutoff).delete()
+
+
 @login_required
 def profile(request):
+    _auto_clear_chat()
+
     if request.method == 'POST':
         form = ChatMessageForm(request.POST)
         if form.is_valid():
@@ -63,3 +72,12 @@ def devices(request):
             'online_after': timezone.now() - timedelta(minutes=5),
         },
     )
+
+
+@login_required
+@user_passes_test(lambda user: user.is_staff)
+@require_POST
+def clear_chat(request):
+    count, _ = ChatMessage.objects.all().delete()
+    messages.success(request, f'Чат очищен. Удалено сообщений: {count}.')
+    return redirect('profile')
