@@ -4,15 +4,37 @@
 
 {% block content %}
 <section class="auth-panel">
-    <h1>Новый диалог</h1>
-    <form method="post" class="auth-form">
-        {% csrf_token %}
+    <h1>Поиск пользователя</h1>
+    <form method="get" class="auth-form">
         <label>
-            <span>Ник пользователя</span>
-            <input type="text" name="username" placeholder="Введите ник" autofocus>
+            <span>Поиск по тегу</span>
+            <input type="text" name="q" value="{{ query }}" placeholder="@тег" autofocus>
         </label>
-        <button type="submit">Открыть диалог</button>
+        <button type="submit">Найти</button>
     </form>
-    <p class="muted"><a href="{% url 'inbox' %}">← Назад к сообщениям</a></p>
+
+    {% if query %}
+        {% if results %}
+            <div class="dm-list" style="margin-top:16px">
+                {% for u in results %}
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="username" value="{{ u.username }}">
+                        <button type="submit" class="dm-item" style="width:100%;background:none;border:none;cursor:pointer;text-align:left;padding:12px 16px;border-radius:8px">
+                            <div class="dm-avatar">{{ u.username|first|upper }}</div>
+                            <div class="dm-info">
+                                <strong>{% if u.profile.display_name %}{{ u.profile.display_name }}{% else %}{{ u.username }}{% endif %}</strong>
+                                <p class="dm-preview">@{{ u.username }}</p>
+                            </div>
+                        </button>
+                    </form>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="muted" style="margin-top:16px">Пользователи с тегом «@{{ query }}» не найдены.</p>
+        {% endif %}
+    {% endif %}
+
+    <p class="muted" style="margin-top:16px"><a href="{% url 'inbox' %}">← Назад к сообщениям</a></p>
 </section>
 {% endblock %}
