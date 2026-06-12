@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block title %}Новый диалог{% endblock %}
+
+{% block content %}
+<section class="auth-panel">
+    <h1>Новый диалог</h1>
+    <form method="post" class="auth-form">
+        {% csrf_token %}
+        <label>
+            <span>Ник пользователя</span>
+            <input type="text" name="username" placeholder="Введите ник" autofocus>
+        </label>
+        <button type="submit">Открыть диалог</button>
+    </form>
+    <p class="muted"><a href="{% url 'inbox' %}">← Назад к сообщениям</a></p>
+</section>
+{% endblock %}
