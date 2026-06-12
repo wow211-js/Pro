@@ -28,13 +28,29 @@ class ChatMessageForm(forms.ModelForm):
         model = ChatMessage
         fields = ('text',)
         widgets = {
-            'text': forms.Textarea(
-                attrs={
-                    'rows': 3,
-                    'placeholder': 'Напишите сообщение в общий чат',
-                }
-            )
+            'text': forms.Textarea(attrs={
+                'rows': 2,
+                'placeholder': 'Написать сообщение...',
+            })
         }
-        labels = {
-            'text': '',
+        labels = {'text': ''}
+
+
+class GuestChatMessageForm(forms.ModelForm):
+    guest_name = forms.CharField(
+        max_length=32,
+        required=True,
+        label='',
+        widget=forms.TextInput(attrs={'placeholder': 'Ваш ник'})
+    )
+
+    class Meta:
+        model = ChatMessage
+        fields = ('guest_name', 'text')
+        widgets = {
+            'text': forms.Textarea(attrs={
+                'rows': 2,
+                'placeholder': 'Написать сообщение...',
+            })
         }
+        labels = {'text': ''}
