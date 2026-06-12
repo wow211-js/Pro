@@ -617,3 +617,13 @@ h1 {
         width: min(58vw, 190px);
     }
 }
+
+/* ─── NV Logo ────────────────────────────────────────────── */
+.nv-logo {
+    font-size: clamp(5rem, 20vw, 14rem);
+    font-weight: 900;
+    color: #ffffff;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    user-select: none;
+}
