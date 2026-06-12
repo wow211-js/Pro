@@ -3,22 +3,68 @@
 {% block title %}Профиль{% endblock %}
 
 {% block content %}
-<section class="profile">
-    <h1>Профиль</h1>
-    <dl>
-        <div>
-            <dt>Имя пользователя</dt>
-            <dd>{{ user.username }}</dd>
+<div class="profile-layout">
+    <section class="profile">
+        <h1>Профиль</h1>
+        <dl>
+            <div>
+                <dt>Имя пользователя</dt>
+                <dd>{{ user.username }}</dd>
+            </div>
+            <div>
+                <dt>Email</dt>
+                <dd>{{ user.email|default:'Не указан' }}</dd>
+            </div>
+            <div>
+                <dt>Дата регистрации</dt>
+                <dd>{{ user.date_joined|date:'d.m.Y H:i' }}</dd>
+            </div>
+        </dl>
+    </section>
+
+    <section class="chat-panel">
+        <div class="chat-heading">
+            <h2>Общий чат</h2>
+            <div class="chat-heading-actions">
+                <span>{{ chat_messages|length }}</span>
+                {% if user.is_staff %}
+                    <form method="post" action="{% url 'clear_chat' %}" onsubmit="return confirm('Очистить весь чат?')">
+                        {% csrf_token %}
+                        <button type="submit" class="clear-btn" title="Очистить чат">🗑</button>
+                    </form>
+                {% endif %}
+            </div>
         </div>
-        <div>
-            <dt>Email</dt>
-            <dd>{{ user.email|default:'Не указан' }}</dd>
+
+        <div class="chat-list" id="chat-list">
+            {% for message in chat_messages %}
+                <article class="chat-message">
+                    <div class="chat-meta">
+                        <strong>{{ message.display_name }}</strong>
+                        <time datetime="{{ message.created_at|date:'c' }}">
+                            {{ message.created_at|date:'d.m.Y H:i' }}
+                        </time>
+                    </div>
+                    <p>{{ message.text|linebreaksbr }}</p>
+                </article>
+            {% empty %}
+                <p class="empty-chat">Пока сообщений нет.</p>
+            {% endfor %}
         </div>
-        <div>
-            <dt>Дата регистрации</dt>
-            <dd>{{ user.date_joined|date:'d.m.Y H:i' }}</dd>
-        </div>
-    </dl>
-    <p style="margin-top:24px"><a href="{% url 'home' %}" class="secondary">← Перейти в чат</a></p>
-</section>
+
+        <form method="post" class="chat-form">
+            {% csrf_token %}
+            {{ chat_form.text }}
+            {% for error in chat_form.text.errors %}
+                <strong class="error">{{ error }}</strong>
+            {% endfor %}
+            <button type="submit">Отправить</button>
+        </form>
+    </section>
+</div>
+
+<script>
+    var list = document.getElementById('chat-list');
+    if (list) list.scrollTop = list.scrollHeight;
+</script>
 {% endblock %}
