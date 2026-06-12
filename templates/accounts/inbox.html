@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}Сообщения{% endblock %}
+
+{% block content %}
+<section class="wide-panel">
+    <div class="section-heading">
+        <h1>Сообщения</h1>
+        <a href="{% url 'new_conversation' %}" class="button-link">+ Новый диалог</a>
+    </div>
+
+    {% if conversations %}
+        <div class="dm-list">
+            {% for conv in conversations %}
+                <a href="{% url 'conversation' conv.partner.username %}" class="dm-item {% if conv.unread %}dm-unread{% endif %}">
+                    <div class="dm-avatar">{{ conv.partner.username|first|upper }}</div>
+                    <div class="dm-info">
+                        <div class="dm-header">
+                            <strong>{{ conv.partner.username }}</strong>
+                            {% if conv.last_msg %}
+                                <time>{{ conv.last_msg.created_at|date:'d.m H:i' }}</time>
+                            {% endif %}
+                        </div>
+                        {% if conv.last_msg %}
+                            <p class="dm-preview">{{ conv.last_msg.text|truncatechars:60 }}</p>
+                        {% endif %}
+                    </div>
+                    {% if conv.unread %}
+                        <span class="dm-badge">{{ conv.unread }}</span>
+                    {% endif %}
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="empty-chat">Диалогов пока нет. <a href="{% url 'new_conversation' %}">Начать новый</a></p>
+    {% endif %}
+</section>
+{% endblock %}
