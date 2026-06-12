@@ -45,8 +45,11 @@ class ChatMessage(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name='Пользователь',
-        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
     )
+    guest_name = models.CharField('Имя гостя', max_length=32, blank=True, default='')
     text = models.TextField('Сообщение', max_length=1000)
     created_at = models.DateTimeField('Дата отправки', auto_now_add=True)
 
@@ -56,4 +59,11 @@ class ChatMessage(models.Model):
         verbose_name_plural = 'сообщения чата'
 
     def __str__(self):
-        return f'{self.user.username}: {self.text[:40]}'
+        name = self.user.username if self.user else self.guest_name or 'Гость'
+        return f'{name}: {self.text[:40]}'
+
+    @property
+    def display_name(self):
+        if self.user:
+            return self.user.username
+        return self.guest_name or 'Гость'
