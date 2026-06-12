@@ -1,8 +1,17 @@
 from datetime import timedelta
+import hashlib
 
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+
+
+def hash_ip(ip):
+    """One-way hash of IP — allows deduplication without storing real IP."""
+    if not ip:
+        return None
+    salt = getattr(settings, 'IP_HASH_SALT', 'default-salt')
+    return hashlib.sha256(f"{salt}{ip}".encode()).hexdigest()[:16]
 
 
 class VisitorSession(models.Model):
@@ -14,8 +23,7 @@ class VisitorSession(models.Model):
         blank=True,
         on_delete=models.SET_NULL,
     )
-    ip_address = models.GenericIPAddressField('IP адрес', null=True, blank=True)
-    user_agent = models.TextField('Устройство / браузер', blank=True)
+    ip_hash = models.CharField('Хэш IP', max_length=16, blank=True, default='')
     first_seen = models.DateTimeField('Первый визит', auto_now_add=True)
     last_seen = models.DateTimeField('Последняя активность', auto_now=True)
 
@@ -26,7 +34,7 @@ class VisitorSession(models.Model):
 
     def __str__(self):
         owner = self.user.username if self.user else 'Гость'
-        return f'{owner} - {self.ip_address or "unknown"}'
+        return f'{owner} - {self.ip_hash or "unknown"}'
 
     @property
     def is_online(self):
