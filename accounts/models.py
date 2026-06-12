@@ -88,7 +88,11 @@ class ChatMessage(models.Model):
     @property
     def display_name(self):
         if self.user:
-            return self.user.username
+            try:
+                dn = self.user.profile.display_name
+                return dn if dn else self.user.username
+            except Exception:
+                return self.user.username
         return self.guest_name or 'Гость'
 
 
