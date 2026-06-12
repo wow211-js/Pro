@@ -8,14 +8,27 @@
         <h1>Профиль</h1>
         <dl>
             <div>
-                <dt>Имя пользователя</dt>
-                <dd>{{ user.username }}</dd>
+                <dt>Тег / логин</dt>
+                <dd>@{{ user.username }}</dd>
+            </div>
+            <div>
+                <dt>Отображаемое имя</dt>
+                <dd>{{ profile.name }}</dd>
             </div>
             <div>
                 <dt>Дата регистрации</dt>
                 <dd>{{ user.date_joined|date:'d.m.Y H:i' }}</dd>
             </div>
         </dl>
+
+        <form method="post" class="auth-form" style="margin-top:24px">
+            {% csrf_token %}
+            <label>
+                <span>Изменить отображаемое имя</span>
+                {{ edit_form.display_name }}
+            </label>
+            <button type="submit">Сохранить</button>
+        </form>
     </section>
 
     <section class="chat-panel">
