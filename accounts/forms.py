@@ -54,3 +54,14 @@ class GuestChatMessageForm(forms.ModelForm):
             })
         }
         labels = {'text': ''}
+
+
+class DirectMessageForm(forms.Form):
+    text = forms.CharField(
+        max_length=1000,
+        label='',
+        widget=forms.Textarea(attrs={
+            'rows': 2,
+            'placeholder': 'Написать сообщение...',
+        })
+    )
