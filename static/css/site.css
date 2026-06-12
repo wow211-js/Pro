@@ -702,3 +702,145 @@ h1 {
         padding: 32px 0 0;
     }
 }
+
+/* ─── Direct Messages ────────────────────────────────────── */
+.dm-list {
+    display: grid;
+    gap: 2px;
+}
+
+.dm-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 8px;
+    color: var(--text);
+    text-decoration: none;
+    transition: background 0.15s;
+}
+
+.dm-item:hover {
+    background: var(--bg);
+    text-decoration: none;
+}
+
+.dm-unread {
+    background: var(--bg-code);
+}
+
+.dm-avatar {
+    display: inline-grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--btn-text);
+    font-weight: 800;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.dm-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.dm-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 3px;
+}
+
+.dm-header time {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    white-space: nowrap;
+}
+
+.dm-preview {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dm-badge {
+    display: inline-grid;
+    place-items: center;
+    min-width: 22px;
+    height: 22px;
+    border-radius: 11px;
+    background: var(--accent);
+    color: var(--btn-text);
+    font-size: 0.78rem;
+    font-weight: 800;
+    padding: 0 6px;
+}
+
+.dm-panel {
+    max-width: 680px;
+}
+
+.dm-conv-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-inner);
+}
+
+.back-link {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-right: 4px;
+}
+
+.dm-messages {
+    max-height: 50vh;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dm-msg {
+    max-width: 75%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    line-height: 1.45;
+}
+
+.dm-msg p {
+    margin: 0 0 4px;
+}
+
+.dm-msg time {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.dm-msg-out {
+    align-self: flex-end;
+    background: var(--accent);
+    color: var(--btn-text);
+    border-bottom-right-radius: 4px;
+}
+
+.dm-msg-out time {
+    color: rgba(255,255,255,0.65);
+    text-align: right;
+}
+
+.dm-msg-in {
+    align-self: flex-start;
+    background: var(--bg-code);
+    border: 1px solid var(--border-inner);
+    border-bottom-left-radius: 4px;
+}
