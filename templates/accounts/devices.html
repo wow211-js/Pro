@@ -18,8 +18,6 @@
                 <tr>
                     <th>Статус</th>
                     <th>Пользователь</th>
-                    <th>IP</th>
-                    <th>Устройство / браузер</th>
                     <th>Первый визит</th>
                     <th>Последняя активность</th>
                 </tr>
@@ -41,14 +39,12 @@
                                 Гость
                             {% endif %}
                         </td>
-                        <td>{{ visitor.ip_address|default:'Неизвестно' }}</td>
-                        <td class="user-agent">{{ visitor.user_agent|default:'Неизвестно' }}</td>
                         <td>{{ visitor.first_seen|date:'d.m.Y H:i' }}</td>
                         <td>{{ visitor.last_seen|date:'d.m.Y H:i:s' }}</td>
                     </tr>
                 {% empty %}
                     <tr>
-                        <td colspan="6" class="empty">Пока нет посещений.</td>
+                        <td colspan="4" class="empty">Пока нет посещений.</td>
                     </tr>
                 {% endfor %}
             </tbody>
