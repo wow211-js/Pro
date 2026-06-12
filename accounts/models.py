@@ -14,6 +14,29 @@ def hash_ip(ip):
     return hashlib.sha256(f"{salt}{ip}".encode()).hexdigest()[:16]
 
 
+
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        verbose_name='Пользователь',
+        on_delete=models.CASCADE,
+        related_name='profile',
+    )
+    display_name = models.CharField('Отображаемое имя', max_length=64, blank=True)
+
+    class Meta:
+        verbose_name = 'профиль'
+        verbose_name_plural = 'профили'
+
+    def __str__(self):
+        return f'{self.user.username} ({self.display_name or "без имени"})' 
+
+    @property
+    def name(self):
+        """Returns display_name if set, otherwise username."""
+        return self.display_name or self.user.username
+
 class VisitorSession(models.Model):
     session_key = models.CharField('Ключ сессии', max_length=64, unique=True)
     user = models.ForeignKey(
