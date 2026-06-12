@@ -5,15 +5,10 @@ from .models import ChatMessage, VisitorSession
 
 @admin.register(VisitorSession)
 class VisitorSessionAdmin(admin.ModelAdmin):
-    list_display = ('user', 'ip_address', 'short_user_agent', 'last_seen', 'first_seen')
+    list_display = ('user', 'ip_hash', 'last_seen', 'first_seen')
     list_filter = ('last_seen', 'first_seen')
-    search_fields = ('user__username', 'ip_address', 'user_agent', 'session_key')
-    readonly_fields = ('session_key', 'user', 'ip_address', 'user_agent', 'first_seen', 'last_seen')
-
-    def short_user_agent(self, obj):
-        return obj.user_agent[:80]
-
-    short_user_agent.short_description = 'Устройство / браузер'
+    search_fields = ('user__username', 'session_key')
+    readonly_fields = ('session_key', 'user', 'ip_hash', 'first_seen', 'last_seen')
 
 
 @admin.register(ChatMessage)
