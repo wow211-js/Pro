@@ -6,6 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}Django Accounts{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'css/site.css' %}">
+    <script>
+        // Apply saved theme before paint to avoid flash
+        (function () {
+            var saved = localStorage.getItem('theme');
+            if (saved) document.documentElement.setAttribute('data-theme', saved);
+        })();
+    </script>
 </head>
 <body>
     <header class="site-header">
@@ -25,6 +32,7 @@
                 <a href="{% url 'login' %}">Войти</a>
                 <a class="button-link" href="{% url 'signup' %}">Регистрация</a>
             {% endif %}
+            <button class="theme-toggle" id="theme-toggle" aria-label="Переключить тему" title="Переключить тему">🌙</button>
         </nav>
     </header>
 
@@ -39,5 +47,34 @@
 
         {% block content %}{% endblock %}
     </main>
+
+    <script>
+        (function () {
+            var btn = document.getElementById('theme-toggle');
+            var root = document.documentElement;
+
+            function getTheme() {
+                var saved = localStorage.getItem('theme');
+                if (saved) return saved;
+                return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
+
+            function setIcon(theme) {
+                btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+                btn.setAttribute('aria-label', theme === 'dark' ? 'Светлая тема' : 'Тёмная тема');
+            }
+
+            // Init icon
+            setIcon(getTheme());
+
+            btn.addEventListener('click', function () {
+                var current = getTheme();
+                var next = current === 'dark' ? 'light' : 'dark';
+                root.setAttribute('data-theme', next);
+                localStorage.setItem('theme', next);
+                setIcon(next);
+            });
+        })();
+    </script>
 </body>
 </html>
