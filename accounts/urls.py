@@ -8,4 +8,7 @@ urlpatterns = [
     path('profile/', views.profile, name='profile'),
     path('devices/', views.devices, name='devices'),
     path('chat/clear/', views.clear_chat, name='clear_chat'),
+    path('messages/', views.inbox, name='inbox'),
+    path('messages/new/', views.new_conversation, name='new_conversation'),
+    path('messages/<str:username>/', views.conversation, name='conversation'),
 ]
