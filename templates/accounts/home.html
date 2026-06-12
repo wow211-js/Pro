@@ -36,7 +36,7 @@
             {% endfor %}
         </div>
 
-        <form method="post" class="chat-form">
+        <form method="post" class="chat-form" id="chat-form">
             {% csrf_token %}
             {% if user.is_authenticated %}
                 {{ chat_form.text }}
@@ -61,8 +61,23 @@
 </div>
 
 <script>
-    // Scroll chat to bottom on load
+    // Scroll chat to bottom
     var list = document.getElementById('chat-list');
     if (list) list.scrollTop = list.scrollHeight;
+
+    // Save and restore guest nickname via localStorage
+    var nickInput = document.getElementById('id_guest_name');
+    if (nickInput) {
+        // Restore saved nick
+        var savedNick = localStorage.getItem('chat_nick');
+        if (savedNick) nickInput.value = savedNick;
+
+        // Save nick on form submit
+        document.getElementById('chat-form').addEventListener('submit', function() {
+            if (nickInput.value.trim()) {
+                localStorage.setItem('chat_nick', nickInput.value.trim());
+            }
+        });
+    }
 </script>
 {% endblock %}
