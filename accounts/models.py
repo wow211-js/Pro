@@ -93,7 +93,7 @@ class ChatMessage(models.Model):
                 return dn if dn else self.user.username
             except Exception:
                 return self.user.username
-        return self.guest_name or 'Гость'
+        return self.guest_name if self.guest_name and self.guest_name.strip() else 'Гость'
 
 
 class DirectMessage(models.Model):
