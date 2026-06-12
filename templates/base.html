@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}Django Accounts{% endblock %}</title>
+    <title>{% block title %}Главная{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'css/site.css' %}">
     <script>
         // Apply saved theme before paint to avoid flash
@@ -16,7 +16,7 @@
 </head>
 <body>
     <header class="site-header">
-        <a class="brand" href="{% url 'home' %}">Django Accounts</a>
+        <a class="brand" href="{% url 'home' %}">Главная</a>
         <nav class="nav">
             {% if user.is_authenticated %}
                 <a href="{% url 'profile' %}">Профиль</a>
