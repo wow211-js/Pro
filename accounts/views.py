@@ -7,9 +7,9 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from .forms import ChatMessageForm, DirectMessageForm, SignUpForm
+from .forms import ChatMessageForm, DirectMessageForm, ProfileEditForm, SignUpForm
 from django.db import models
-from .models import ChatMessage, DirectMessage, VisitorSession
+from .models import ChatMessage, DirectMessage, UserProfile, VisitorSession
 
 
 def _auto_clear_chat():
@@ -37,21 +37,33 @@ def signup(request):
 @login_required
 def profile(request):
     _auto_clear_chat()
+    profile_obj, _ = UserProfile.objects.get_or_create(user=request.user)
+
+    chat_form = ChatMessageForm()
+    edit_form = ProfileEditForm(initial={'display_name': profile_obj.display_name})
 
     if request.method == 'POST':
-        form = ChatMessageForm(request.POST)
-        if form.is_valid():
-            chat_message = form.save(commit=False)
-            chat_message.user = request.user
-            chat_message.save()
-            return redirect('profile')
-    else:
-        form = ChatMessageForm()
+        if 'text' in request.POST:
+            chat_form = ChatMessageForm(request.POST)
+            if chat_form.is_valid():
+                msg = chat_form.save(commit=False)
+                msg.user = request.user
+                msg.save()
+                return redirect('profile')
+        elif 'display_name' in request.POST:
+            edit_form = ProfileEditForm(request.POST)
+            if edit_form.is_valid():
+                profile_obj.display_name = edit_form.cleaned_data['display_name']
+                profile_obj.save()
+                messages.success(request, 'Имя обновлено.')
+                return redirect('profile')
 
     chat_messages = list(ChatMessage.objects.select_related('user').order_by('-created_at')[:50])
     return render(request, 'accounts/profile.html', {
-        'chat_form': form,
+        'chat_form': chat_form,
+        'edit_form': edit_form,
         'chat_messages': reversed(chat_messages),
+        'profile': profile_obj,
     })
 
 
@@ -147,18 +159,30 @@ def conversation(request, username):
 
 @login_required
 def new_conversation(request):
-    """Start a new conversation by entering a username."""
+    """Search users by tag and start a conversation."""
     from django.contrib.auth.models import User
+    from django.db.models import Q
+
+    query = request.GET.get('q', '').strip().lstrip('@')
+    results = []
 
     if request.method == 'POST':
-        username = request.POST.get('username', '').strip()
+        username = request.POST.get('username', '').strip().lstrip('@')
         if not username:
-            messages.error(request, 'Введите ник пользователя.')
-            return redirect('new_conversation')
-        try:
-            User.objects.get(username=username)
-            return redirect('conversation', username=username)
-        except User.DoesNotExist:
-            messages.error(request, f'Пользователь "{username}" не найден.')
+            messages.error(request, 'Введите тег пользователя.')
+        else:
+            try:
+                User.objects.get(username=username)
+                return redirect('conversation', username=username)
+            except User.DoesNotExist:
+                messages.error(request, f'Пользователь @{username} не найден.')
 
-    return render(request, 'accounts/new_conversation.html')
+    if query:
+        results = User.objects.filter(
+            Q(username__icontains=query)
+        ).exclude(id=request.user.id).select_related('profile')[:10]
+
+    return render(request, 'accounts/new_conversation.html', {
+        'query': query,
+        'results': results,
+    })
