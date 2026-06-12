@@ -26,7 +26,8 @@ class SignUpForm(UserCreationForm):
         if commit:
             from .models import UserProfile
             profile, _ = UserProfile.objects.get_or_create(user=user)
-            profile.display_name = self.cleaned_data.get('display_name', '')
+            dn = self.cleaned_data.get('display_name', '').strip()
+            profile.display_name = dn if dn else 'Гость'
             profile.save()
         return user
 
