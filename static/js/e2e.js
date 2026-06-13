@@ -1,11 +1,10 @@
-// E2E Encryption using OpenPGP.js
-// Keys are generated in browser, private key encrypted with user password
+// E2E Encryption using OpenPGP.js (ECC Curve25519 - fast generation)
 
 const E2E = {
     async generateKeys(username, passphrase) {
         const { privateKey, publicKey } = await openpgp.generateKey({
-            type: 'rsa',
-            rsaBits: 2048,
+            type: 'ecc',
+            curve: 'curve25519',
             userIDs: [{ name: username }],
             passphrase: passphrase,
         });
@@ -31,17 +30,18 @@ const E2E = {
         const resp = await fetch(`/api/keys/${username}/`);
         if (!resp.ok) return null;
         const data = await resp.json();
-        return data.public_key;
+        return data.public_key || null;
     },
 
     async encrypt(text, recipientPublicKeyArmored, senderPublicKeyArmored) {
-        const recipientKey = await openpgp.readKey({ armoredKey: recipientPublicKeyArmored });
-        const senderKey = await openpgp.readKey({ armoredKey: senderPublicKeyArmored });
-        const encrypted = await openpgp.encrypt({
+        const keys = [await openpgp.readKey({ armoredKey: recipientPublicKeyArmored })];
+        if (senderPublicKeyArmored && senderPublicKeyArmored !== recipientPublicKeyArmored) {
+            keys.push(await openpgp.readKey({ armoredKey: senderPublicKeyArmored }));
+        }
+        return await openpgp.encrypt({
             message: await openpgp.createMessage({ text }),
-            encryptionKeys: [recipientKey, senderKey], // encrypt for both so sender can read too
+            encryptionKeys: keys,
         });
-        return encrypted;
     },
 
     async decrypt(ciphertext, privateKeyArmored, passphrase) {
@@ -62,7 +62,6 @@ const E2E = {
     },
 
     storeSession(encryptedPrivateKey, passphrase) {
-        // Store passphrase only in sessionStorage (cleared when tab closes)
         sessionStorage.setItem('e2e_passphrase', passphrase);
         sessionStorage.setItem('e2e_private_key', encryptedPrivateKey);
     },
@@ -72,10 +71,5 @@ const E2E = {
             passphrase: sessionStorage.getItem('e2e_passphrase'),
             privateKey: sessionStorage.getItem('e2e_private_key'),
         };
-    },
-
-    clearSession() {
-        sessionStorage.removeItem('e2e_passphrase');
-        sessionStorage.removeItem('e2e_private_key');
     },
 };
