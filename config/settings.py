@@ -26,7 +26,7 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY') or os.environ.get('SECRET_KEY')
 if not SECRET_KEY:
     raise ValueError('Переменная окружения DJANGO_SECRET_KEY или SECRET_KEY должна быть задана')
 
-IP_HASH_SALT = os.environ.get('IP_HASH_SALT', '')
+IP_HASH_SALT = os.environ.get('IP_HASH_SALT', '') or SECRET_KEY
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get(
