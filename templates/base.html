@@ -22,7 +22,6 @@
                 <a href="{% url 'profile' %}">Профиль</a>
                 <a href="{% url 'inbox' %}">Сообщения</a>
                 {% if user.is_staff %}
-                    <a href="{% url 'devices' %}">Устройства</a>
                     <a href="{% url 'admin:index' %}">Админка</a>
                 {% endif %}
                 <form method="post" action="{% url 'logout' %}">
