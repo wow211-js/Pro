@@ -1,21 +1,9 @@
-from datetime import timedelta
 import hashlib
+from datetime import timedelta
 
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
-
-
-def hash_ip(ip):
-    """One-way hash of IP — allows deduplication without storing real IP."""
-    if not ip:
-        return None
-    salt = getattr(settings, 'IP_HASH_SALT', None)
-    if not salt:
-        raise ValueError('IP_HASH_SALT не настроен в settings')
-    return hashlib.sha256(f"{salt}{ip}".encode()).hexdigest()[:16]
-
-
 
 
 class UserProfile(models.Model):
@@ -26,44 +14,19 @@ class UserProfile(models.Model):
         related_name='profile',
     )
     display_name = models.CharField('Отображаемое имя', max_length=64, blank=True)
+    public_key = models.TextField('Публичный ключ', blank=True)
+    encrypted_private_key = models.TextField('Зашифрованный приватный ключ', blank=True)
 
     class Meta:
         verbose_name = 'профиль'
         verbose_name_plural = 'профили'
 
     def __str__(self):
-        return f'{self.user.username} ({self.display_name or "без имени"})' 
+        return f'{self.user.username} ({self.display_name or "без имени"})'
 
     @property
     def name(self):
-        """Returns display_name if set, otherwise username."""
         return self.display_name or self.user.username
-
-class VisitorSession(models.Model):
-    session_key = models.CharField('Ключ сессии', max_length=64, unique=True)
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        verbose_name='Пользователь',
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-    )
-    ip_hash = models.CharField('Хэш IP', max_length=16, blank=True, default='')
-    first_seen = models.DateTimeField('Первый визит', auto_now_add=True)
-    last_seen = models.DateTimeField('Последняя активность', auto_now=True)
-
-    class Meta:
-        ordering = ['-last_seen']
-        verbose_name = 'устройство на сайте'
-        verbose_name_plural = 'устройства на сайте'
-
-    def __str__(self):
-        owner = self.user.username if self.user else 'Гость'
-        return f'{owner} - {self.ip_hash or "unknown"}'
-
-    @property
-    def is_online(self):
-        return self.last_seen >= timezone.now() - timedelta(minutes=5)
 
 
 class ChatMessage(models.Model):
@@ -111,7 +74,8 @@ class DirectMessage(models.Model):
         related_name='received_messages',
         on_delete=models.CASCADE,
     )
-    text = models.TextField('Сообщение', max_length=1000)
+    # Encrypted ciphertext (base64 encoded)
+    text = models.TextField('Сообщение (зашифровано)')
     created_at = models.DateTimeField('Дата отправки', auto_now_add=True)
     is_read = models.BooleanField('Прочитано', default=False)
 
@@ -121,4 +85,4 @@ class DirectMessage(models.Model):
         verbose_name_plural = 'личные сообщения'
 
     def __str__(self):
-        return f'{self.sender.username} → {self.recipient.username}: {self.text[:40]}'
+        return f'{self.sender.username} → {self.recipient.username}: [encrypted]'
