@@ -1,14 +1,13 @@
 from django.contrib import admin
 
-from .models import ChatMessage, VisitorSession
+from .models import ChatMessage, UserProfile
 
 
-@admin.register(VisitorSession)
-class VisitorSessionAdmin(admin.ModelAdmin):
-    list_display = ('user', 'ip_hash', 'last_seen', 'first_seen')
-    list_filter = ('last_seen', 'first_seen')
-    search_fields = ('user__username', 'session_key')
-    readonly_fields = ('session_key', 'user', 'ip_hash', 'first_seen', 'last_seen')
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ('user', 'display_name')
+    search_fields = ('user__username', 'display_name')
+    readonly_fields = ('user',)
 
 
 @admin.register(ChatMessage)
