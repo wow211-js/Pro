@@ -10,7 +10,9 @@ def hash_ip(ip):
     """One-way hash of IP — allows deduplication without storing real IP."""
     if not ip:
         return None
-    salt = getattr(settings, 'IP_HASH_SALT', 'default-salt')
+    salt = getattr(settings, 'IP_HASH_SALT', None)
+    if not salt:
+        raise ValueError('IP_HASH_SALT не настроен в settings')
     return hashlib.sha256(f"{salt}{ip}".encode()).hexdigest()[:16]
 
 
