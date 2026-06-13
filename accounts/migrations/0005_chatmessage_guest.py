@@ -6,7 +6,7 @@ from django.conf import settings
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('accounts', '0004_oleg_superuser'),
+        ('accounts', '0003_privacy'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
