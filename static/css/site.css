@@ -854,3 +854,57 @@ h1 {
     border: 1px solid var(--border-inner);
     border-bottom-left-radius: 4px;
 }
+
+/* ─── E2E Encryption ─────────────────────────────────────── */
+.e2e-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-left: 8px;
+}
+
+.e2e-ok {
+    background: var(--online-bg);
+    color: var(--online-fg);
+}
+
+.e2e-warn {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+[data-theme="dark"] .e2e-warn {
+    background: #451a03;
+    color: #fbbf24;
+}
+
+.e2e-loading {
+    background: var(--offline-bg);
+    color: var(--offline-fg);
+}
+
+.e2e-unlock-panel {
+    padding: 16px;
+    border: 1px solid var(--border-inner);
+    border-radius: 8px;
+    background: var(--bg-code);
+    margin-bottom: 16px;
+}
+
+.e2e-unlock-panel p {
+    margin: 0 0 10px;
+    font-weight: 600;
+}
+
+.e2e-input {
+    width: 100%;
+    border: 1px solid var(--input-border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font: inherit;
+    background: var(--bg-input);
+    color: var(--text);
+}
