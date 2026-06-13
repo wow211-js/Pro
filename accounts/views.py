@@ -187,3 +187,28 @@ def new_conversation(request):
         'query': query,
         'results': results,
     })
+
+
+@login_required
+@require_POST
+def delete_conversation(request, username):
+    """Delete all direct messages between current user and partner."""
+    from django.contrib.auth.models import User
+    from django.db import models as dj_models
+
+    try:
+        partner = User.objects.get(username=username)
+    except User.DoesNotExist:
+        messages.error(request, f'Пользователь "{username}" не найден.')
+        return redirect('inbox')
+
+    if partner == request.user:
+        return redirect('inbox')
+
+    count, _ = DirectMessage.objects.filter(
+        dj_models.Q(sender=request.user, recipient=partner) |
+        dj_models.Q(sender=partner, recipient=request.user)
+    ).delete()
+
+    messages.success(request, f'Диалог удалён. Удалено сообщений: {count}.')
+    return redirect('inbox')

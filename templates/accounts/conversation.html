@@ -8,6 +8,10 @@
         <a href="{% url 'inbox' %}" class="back-link">← Назад</a>
         <div class="dm-avatar">{{ partner.username|first|upper }}</div>
         <strong>{{ partner.username }}</strong>
+        <form method="post" action="{% url 'delete_conversation' partner.username %}" onsubmit="return confirm('Удалить весь диалог? Это действие нельзя отменить.')" style="margin-left: auto;">
+            {% csrf_token %}
+            <button type="submit" class="clear-btn" title="Удалить диалог">🗑</button>
+        </form>
     </div>
 
     <div class="chat-list dm-messages" id="dm-list">

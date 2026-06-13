@@ -12,23 +12,29 @@
     {% if conversations %}
         <div class="dm-list">
             {% for conv in conversations %}
-                <a href="{% url 'conversation' conv.partner.username %}" class="dm-item {% if conv.unread %}dm-unread{% endif %}">
-                    <div class="dm-avatar">{{ conv.partner.username|first|upper }}</div>
-                    <div class="dm-info">
-                        <div class="dm-header">
-                            <strong>{{ conv.partner.username }}</strong>
+                <div class="dm-item-row">
+                    <a href="{% url 'conversation' conv.partner.username %}" class="dm-item {% if conv.unread %}dm-unread{% endif %}">
+                        <div class="dm-avatar">{{ conv.partner.username|first|upper }}</div>
+                        <div class="dm-info">
+                            <div class="dm-header">
+                                <strong>{{ conv.partner.username }}</strong>
+                                {% if conv.last_msg %}
+                                    <time>{{ conv.last_msg.created_at|date:'d.m H:i' }}</time>
+                                {% endif %}
+                            </div>
                             {% if conv.last_msg %}
-                                <time>{{ conv.last_msg.created_at|date:'d.m H:i' }}</time>
+                                <p class="dm-preview">{{ conv.last_msg.text|truncatechars:60 }}</p>
                             {% endif %}
                         </div>
-                        {% if conv.last_msg %}
-                            <p class="dm-preview">{{ conv.last_msg.text|truncatechars:60 }}</p>
+                        {% if conv.unread %}
+                            <span class="dm-badge">{{ conv.unread }}</span>
                         {% endif %}
-                    </div>
-                    {% if conv.unread %}
-                        <span class="dm-badge">{{ conv.unread }}</span>
-                    {% endif %}
-                </a>
+                    </a>
+                    <form method="post" action="{% url 'delete_conversation' conv.partner.username %}" onsubmit="return confirm('Удалить диалог с {{ conv.partner.username }}?')">
+                        {% csrf_token %}
+                        <button type="submit" class="clear-btn" title="Удалить диалог">🗑</button>
+                    </form>
+                </div>
             {% endfor %}
         </div>
     {% else %}
