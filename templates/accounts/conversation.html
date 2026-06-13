@@ -8,30 +8,20 @@
         <a href="{% url 'inbox' %}" class="back-link">← Назад</a>
         <div class="dm-avatar">{{ partner.username|first|upper }}</div>
         <strong>{{ partner.username }}</strong>
-        <span id="e2e-status" class="e2e-badge e2e-loading" title="Статус шифрования">🔒 …</span>
+        <span id="e2e-status" class="e2e-badge e2e-loading">🔒 …</span>
         <form method="post" action="{% url 'delete_conversation' partner.username %}" onsubmit="return confirm('Удалить весь диалог?')" style="margin-left:auto">
             {% csrf_token %}
             <button type="submit" class="clear-btn" title="Удалить диалог">🗑</button>
         </form>
     </div>
 
+    {# Passphrase prompt - shown only if sessionStorage was cleared (new tab/browser) #}
     <div id="e2e-unlock" class="e2e-unlock-panel" style="display:none">
-        <p>Введите пароль шифрования чтобы читать сообщения:</p>
+        <p>Введите пароль от аккаунта чтобы разблокировать шифрование:</p>
         <div style="display:flex;gap:8px">
-            <input type="password" id="unlock-passphrase" placeholder="Пароль шифрования" class="e2e-input">
+            <input type="password" id="unlock-passphrase" placeholder="Пароль от аккаунта" class="e2e-input">
             <button onclick="unlockE2E()" class="button-link" style="white-space:nowrap">Разблокировать</button>
         </div>
-        <p class="muted" style="font-size:0.85rem;margin-top:8px">Пароль хранится только в этой вкладке и очищается при закрытии.</p>
-    </div>
-
-    <div id="e2e-setup" class="e2e-unlock-panel" style="display:none">
-        <p>У вас нет ключей шифрования. Создайте их:</p>
-        <div style="display:grid;gap:8px">
-            <input type="password" id="setup-passphrase" placeholder="Придумайте пароль шифрования" class="e2e-input">
-            <input type="password" id="setup-passphrase2" placeholder="Повторите пароль" class="e2e-input">
-            <button onclick="setupE2E()" class="button-link">Создать ключи</button>
-        </div>
-        <p class="muted" style="font-size:0.85rem;margin-top:8px">⚠️ Запомните пароль — без него сообщения нельзя прочитать.</p>
     </div>
 
     <div class="chat-list dm-messages" id="dm-list">
@@ -49,7 +39,8 @@
 
     <form id="dm-form" class="chat-form" onsubmit="sendEncrypted(event)">
         {% csrf_token %}
-        <textarea id="msg-input" rows="2" placeholder="Написать сообщение..." style="width:100%;border:1px solid var(--input-border);border-radius:8px;padding:12px 14px;font:inherit;background:var(--bg-input);color:var(--text);resize:vertical"></textarea>
+        <textarea id="msg-input" rows="2" placeholder="Написать сообщение..."
+            style="width:100%;border:1px solid var(--input-border);border-radius:8px;padding:12px 14px;font:inherit;background:var(--bg-input);color:var(--text);resize:vertical"></textarea>
         <button type="submit">Отправить</button>
     </form>
 </section>
@@ -66,14 +57,15 @@ let myPublicKey = null;
 async function init() {
     const session = E2E.getSession();
 
-    // Check if user has keys on server
+    // Check if user already has keys on server
     const resp = await fetch(`/api/keys/${MY_USERNAME}/`);
     const data = await resp.json();
 
     if (!data.public_key) {
-        // No keys yet - show setup
-        document.getElementById('e2e-setup').style.display = 'block';
+        // No keys — need password to generate
         setStatus('⚠️ Нет ключей', 'e2e-warn');
+        document.getElementById('e2e-unlock').style.display = 'block';
+        document.getElementById('unlock-passphrase').placeholder = 'Пароль от аккаунта (для создания ключей)';
         return;
     }
 
@@ -84,41 +76,42 @@ async function init() {
         await decryptAll(session.privateKey, session.passphrase);
         setStatus('🔒 E2E', 'e2e-ok');
     } else {
-        // Has keys but not unlocked
+        // Has keys but session expired — ask password
         document.getElementById('e2e-unlock').style.display = 'block';
         setStatus('🔑 Заблокировано', 'e2e-warn');
     }
-}
-
-async function setupE2E() {
-    const p1 = document.getElementById('setup-passphrase').value;
-    const p2 = document.getElementById('setup-passphrase2').value;
-    if (!p1) return alert('Введите пароль');
-    if (p1 !== p2) return alert('Пароли не совпадают');
-
-    setStatus('⏳ Генерация...', 'e2e-loading');
-    const { privateKey, publicKey } = await E2E.generateKeys(MY_USERNAME, p1);
-    await E2E.saveKeys(publicKey, privateKey);
-    E2E.storeSession(privateKey, p1);
-    myPublicKey = publicKey;
-
-    document.getElementById('e2e-setup').style.display = 'none';
-    setStatus('🔒 E2E', 'e2e-ok');
-    await decryptAll(privateKey, p1);
 }
 
 async function unlockE2E() {
     const passphrase = document.getElementById('unlock-passphrase').value;
     if (!passphrase) return alert('Введите пароль');
 
+    setStatus('⏳ …', 'e2e-loading');
+
     const resp = await fetch(`/api/keys/${MY_USERNAME}/`);
     const data = await resp.json();
-    const encPrivKey = data.encrypted_private_key || '';
 
-    E2E.storeSession(encPrivKey, passphrase);
-    document.getElementById('e2e-unlock').style.display = 'none';
-    setStatus('🔒 E2E', 'e2e-ok');
-    await decryptAll(encPrivKey, passphrase);
+    if (!data.public_key) {
+        // Generate new keys automatically
+        try {
+            const { privateKey, publicKey } = await E2E.generateKeys(MY_USERNAME, passphrase);
+            await E2E.saveKeys(publicKey, privateKey);
+            E2E.storeSession(privateKey, passphrase);
+            myPublicKey = publicKey;
+            document.getElementById('e2e-unlock').style.display = 'none';
+            setStatus('🔒 E2E', 'e2e-ok');
+        } catch(e) {
+            setStatus('❌ Ошибка', 'e2e-warn');
+            alert('Ошибка генерации ключей: ' + e.message);
+        }
+    } else {
+        // Unlock existing keys
+        myPublicKey = data.public_key;
+        E2E.storeSession(data.encrypted_private_key, passphrase);
+        document.getElementById('e2e-unlock').style.display = 'none';
+        setStatus('🔒 E2E', 'e2e-ok');
+        await decryptAll(data.encrypted_private_key, passphrase);
+    }
 }
 
 async function decryptAll(encPrivKey, passphrase) {
@@ -137,27 +130,25 @@ async function sendEncrypted(e) {
     if (!text) return;
 
     const session = E2E.getSession();
-    if (!session.passphrase) return alert('Сначала разблокируйте шифрование');
+    if (!session.passphrase) {
+        document.getElementById('e2e-unlock').style.display = 'block';
+        return alert('Сначала разблокируйте шифрование');
+    }
 
-    // Get partner public key
     const partnerPubKey = await E2E.getPublicKey(PARTNER);
-    if (!partnerPubKey) return alert('У собеседника нет ключей шифрования');
+    if (!partnerPubKey) return alert('У собеседника нет ключей шифрования. Пусть сначала откроет любой диалог.');
 
     const encrypted = await E2E.encrypt(text, partnerPubKey, myPublicKey);
 
-    // Send via regular form POST
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = window.location.pathname;
-
     const csrf = document.createElement('input');
     csrf.type = 'hidden'; csrf.name = 'csrfmiddlewaretoken'; csrf.value = CSRF;
     form.appendChild(csrf);
-
     const msg = document.createElement('input');
     msg.type = 'hidden'; msg.name = 'text'; msg.value = encrypted;
     form.appendChild(msg);
-
     document.body.appendChild(form);
     form.submit();
 }
@@ -168,7 +159,6 @@ function setStatus(text, cls) {
     el.className = 'e2e-badge ' + cls;
 }
 
-// Scroll to bottom
 var list = document.getElementById('dm-list');
 if (list) list.scrollTop = list.scrollHeight;
 
