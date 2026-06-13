@@ -16,6 +16,10 @@
                 <dd>{{ profile.name }}</dd>
             </div>
             <div>
+                <dt>Шифрование (E2E)</dt>
+                <dd id="key-status">Проверка...</dd>
+            </div>
+            <div>
                 <dt>Дата регистрации</dt>
                 <dd>{{ user.date_joined|date:'d.m.Y H:i' }}</dd>
             </div>
@@ -75,5 +79,12 @@
 <script>
     var list = document.getElementById('chat-list');
     if (list) list.scrollTop = list.scrollHeight;
+</script>
+<script>
+fetch('/api/keys/{{ user.username }}/').then(r=>r.json()).then(d=>{
+    const el = document.getElementById('key-status');
+    if(d.public_key) { el.textContent = '🔒 Ключи настроены'; el.style.color='var(--online-fg)'; }
+    else { el.textContent = '⚠️ Ключи не созданы — откройте любой диалог'; el.style.color='#f59e0b'; }
+});
 </script>
 {% endblock %}
