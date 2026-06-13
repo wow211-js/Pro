@@ -15,9 +15,8 @@
         </form>
     </div>
 
-    {# Passphrase prompt - shown only if sessionStorage was cleared (new tab/browser) #}
     <div id="e2e-unlock" class="e2e-unlock-panel" style="display:none">
-        <p>Введите пароль от аккаунта чтобы разблокировать шифрование:</p>
+        <p id="unlock-label">Введите пароль от аккаунта чтобы разблокировать шифрование:</p>
         <div style="display:flex;gap:8px">
             <input type="password" id="unlock-passphrase" placeholder="Пароль от аккаунта" class="e2e-input">
             <button onclick="unlockE2E()" class="button-link" style="white-space:nowrap">Разблокировать</button>
@@ -45,8 +44,9 @@
     </form>
 </section>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/openpgp/5.11.2/openpgp.min.js"></script>
 {% load static %}
+<!-- Load OpenPGP first, then e2e.js, then inline script -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/openpgp/5.11.2/openpgp.min.js"></script>
 <script src="{% static 'js/e2e.js' %}"></script>
 <script>
 const PARTNER = "{{ partner.username }}";
@@ -56,27 +56,22 @@ let myPublicKey = null;
 
 async function init() {
     const session = E2E.getSession();
-
-    // Check if user already has keys on server
     const resp = await fetch(`/api/keys/${MY_USERNAME}/`);
     const data = await resp.json();
 
     if (!data.public_key) {
-        // No keys — need password to generate
-        setStatus('⚠️ Нет ключей', 'e2e-warn');
+        document.getElementById('unlock-label').textContent = 'Первый вход: введите пароль от аккаунта для создания ключей шифрования:';
         document.getElementById('e2e-unlock').style.display = 'block';
-        document.getElementById('unlock-passphrase').placeholder = 'Пароль от аккаунта (для создания ключей)';
+        setStatus('⚠️ Нет ключей', 'e2e-warn');
         return;
     }
 
     myPublicKey = data.public_key;
 
     if (session.passphrase && session.privateKey) {
-        // Already unlocked this session
         await decryptAll(session.privateKey, session.passphrase);
         setStatus('🔒 E2E', 'e2e-ok');
     } else {
-        // Has keys but session expired — ask password
         document.getElementById('e2e-unlock').style.display = 'block';
         setStatus('🔑 Заблокировано', 'e2e-warn');
     }
@@ -85,14 +80,12 @@ async function init() {
 async function unlockE2E() {
     const passphrase = document.getElementById('unlock-passphrase').value;
     if (!passphrase) return alert('Введите пароль');
-
     setStatus('⏳ …', 'e2e-loading');
 
     const resp = await fetch(`/api/keys/${MY_USERNAME}/`);
     const data = await resp.json();
 
     if (!data.public_key) {
-        // Generate new keys automatically
         try {
             const { privateKey, publicKey } = await E2E.generateKeys(MY_USERNAME, passphrase);
             await E2E.saveKeys(publicKey, privateKey);
@@ -102,10 +95,9 @@ async function unlockE2E() {
             setStatus('🔒 E2E', 'e2e-ok');
         } catch(e) {
             setStatus('❌ Ошибка', 'e2e-warn');
-            alert('Ошибка генерации ключей: ' + e.message);
+            alert('Ошибка: ' + e.message);
         }
     } else {
-        // Unlock existing keys
         myPublicKey = data.public_key;
         E2E.storeSession(data.encrypted_private_key, passphrase);
         document.getElementById('e2e-unlock').style.display = 'none';
@@ -136,7 +128,7 @@ async function sendEncrypted(e) {
     }
 
     const partnerPubKey = await E2E.getPublicKey(PARTNER);
-    if (!partnerPubKey) return alert('У собеседника нет ключей шифрования. Пусть сначала откроет любой диалог.');
+    if (!partnerPubKey) return alert('У собеседника нет ключей. Пусть сначала откроет любой диалог.');
 
     const encrypted = await E2E.encrypt(text, partnerPubKey, myPublicKey);
 
@@ -159,9 +151,10 @@ function setStatus(text, cls) {
     el.className = 'e2e-badge ' + cls;
 }
 
-var list = document.getElementById('dm-list');
-if (list) list.scrollTop = list.scrollHeight;
-
-init();
+document.addEventListener('DOMContentLoaded', () => {
+    const list = document.getElementById('dm-list');
+    if (list) list.scrollTop = list.scrollHeight;
+    init();
+});
 </script>
 {% endblock %}
