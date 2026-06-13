@@ -9,7 +9,7 @@ from django.views.decorators.http import require_POST
 
 from .forms import ChatMessageForm, DirectMessageForm, ProfileEditForm, SignUpForm
 from django.db import models
-from .models import ChatMessage, DirectMessage, UserProfile, VisitorSession
+from .models import ChatMessage, DirectMessage, UserProfile
 
 
 def _auto_clear_chat():
@@ -67,15 +67,6 @@ def profile(request):
         'profile': profile_obj,
     })
 
-
-@login_required
-@user_passes_test(lambda user: user.is_staff)
-def devices(request):
-    visitors = VisitorSession.objects.select_related('user').filter(user__isnull=False)
-    return render(request, 'accounts/devices.html', {
-        'visitors': visitors,
-        'online_after': timezone.now() - timedelta(minutes=5),
-    })
 
 
 @login_required
@@ -212,3 +203,36 @@ def delete_conversation(request, username):
 
     messages.success(request, f'Диалог удалён. Удалено сообщений: {count}.')
     return redirect('inbox')
+
+
+@login_required
+def save_keys(request):
+    """Save E2E keys for the user."""
+    if request.method == 'POST':
+        import json as _json
+        try:
+            data = _json.loads(request.body)
+            profile, _ = UserProfile.objects.get_or_create(user=request.user)
+            profile.public_key = data.get('public_key', '')
+            profile.encrypted_private_key = data.get('encrypted_private_key', '')
+            profile.save()
+            from django.http import JsonResponse
+            return JsonResponse({'ok': True})
+        except Exception as e:
+            from django.http import JsonResponse
+            return JsonResponse({'ok': False, 'error': str(e)}, status=400)
+    from django.http import HttpResponseNotAllowed
+    return HttpResponseNotAllowed(['POST'])
+
+
+@login_required
+def get_public_key(request, username):
+    """Get public key of a user (needed to encrypt messages for them)."""
+    from django.contrib.auth.models import User
+    from django.http import JsonResponse
+    try:
+        user = User.objects.get(username=username)
+        profile = user.profile
+        return JsonResponse({'public_key': profile.public_key, 'username': username})
+    except Exception:
+        return JsonResponse({'error': 'not found'}, status=404)
