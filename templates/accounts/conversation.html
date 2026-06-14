@@ -46,7 +46,7 @@
 
 {% load static %}
 <!-- Load OpenPGP first, then e2e.js, then inline script -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/openpgp/5.11.2/openpgp.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/openpgp@5.11.2/dist/openpgp.min.js"></script>
 <script src="{% static 'js/e2e.js' %}"></script>
 <script>
 const PARTNER = "{{ partner.username }}";
