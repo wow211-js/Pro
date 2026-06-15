@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import ChatMessage, UserProfile
+from .models import ChatMessage, DirectMessage, UserProfile
 
 
 @admin.register(UserProfile)
@@ -21,3 +21,12 @@ class ChatMessageAdmin(admin.ModelAdmin):
         return obj.text[:80]
 
     short_text.short_description = 'Сообщение'
+
+
+@admin.register(DirectMessage)
+class DirectMessageAdmin(admin.ModelAdmin):
+    """Note: text is stored encrypted (PGP) — admin cannot read content."""
+    list_display = ('sender', 'recipient', 'created_at', 'is_read')
+    list_filter = ('created_at', 'is_read')
+    search_fields = ('sender__username', 'recipient__username')
+    readonly_fields = ('sender', 'recipient', 'text', 'created_at', 'is_read')
