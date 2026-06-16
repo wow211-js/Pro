@@ -137,7 +137,7 @@ async function unlockE2E() {
             await showFingerprints();
             document.getElementById('e2e-unlock').style.display = 'none';
             setStatus('🔒 E2E ✓', 'e2e-ok');
-        startPolling();
+            startPolling();
         } catch(e) {
             setStatus('❌ Ошибка', 'e2e-warn');
             alert('Ошибка: ' + e.message);
@@ -176,19 +176,27 @@ async function sendEncrypted(e) {
     const pKey = partnerPublicKey || await E2E.getPublicKey(PARTNER);
     if (!pKey) return alert('У собеседника нет ключей. Пусть сначала откроет любой диалог.');
 
-    const encrypted = await E2E.encrypt(text, pKey, myPublicKey);
+    try {
+        const encrypted = await E2E.encrypt(text, pKey, myPublicKey);
 
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = window.location.pathname;
-    const csrf = document.createElement('input');
-    csrf.type = 'hidden'; csrf.name = 'csrfmiddlewaretoken'; csrf.value = CSRF;
-    form.appendChild(csrf);
-    const msg = document.createElement('input');
-    msg.type = 'hidden'; msg.name = 'text'; msg.value = encrypted;
-    form.appendChild(msg);
-    document.body.appendChild(form);
-    form.submit();
+        const resp = await fetch(window.location.pathname, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': CSRF,
+            },
+            body: 'text=' + encodeURIComponent(encrypted),
+        });
+
+        if (resp.ok || resp.redirected) {
+            document.getElementById('msg-input').value = '';
+            await pollNewMessages();
+        } else {
+            alert('Ошибка отправки: ' + resp.status);
+        }
+    } catch (err) {
+        alert('Ошибка шифрования/отправки: ' + err.message);
+    }
 }
 
 function setStatus(text, cls) {
@@ -199,20 +207,6 @@ function setStatus(text, cls) {
 
 let lastMessageId = 0;
 let pollInterval = null;
-let currentSession = null;
-
-document.addEventListener('DOMContentLoaded', () => {
-    const list = document.getElementById('dm-list');
-    if (list) list.scrollTop = list.scrollHeight;
-
-    // Track last message id from rendered messages
-    const msgs = document.querySelectorAll('.dm-msg[data-id]');
-    if (msgs.length) {
-        lastMessageId = Math.max(...[...msgs].map(el => parseInt(el.dataset.id) || 0));
-    }
-
-    init();
-});
 
 function startPolling() {
     if (pollInterval) return;
@@ -248,7 +242,13 @@ async function pollNewMessages() {
                 plaintext = await E2E.decrypt(msg.text, session.privateKey, session.passphrase);
             }
 
-            div.innerHTML = `<p class="msg-text">${plaintext.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}</p><time>${msg.created_at}</time>`;
+            // XSS-safe HTML
+            const safeText = plaintext
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\n/g, '<br>');
+            div.innerHTML = `<p class="msg-text">${safeText}</p><time>${msg.created_at}</time>`;
             list.appendChild(div);
         }
 
@@ -258,37 +258,17 @@ async function pollNewMessages() {
     }
 }
 
-// Override sendEncrypted to use fetch instead of form submit
-async function sendEncrypted(e) {
-    e.preventDefault();
-    const text = document.getElementById('msg-input').value.trim();
-    if (!text) return;
+document.addEventListener('DOMContentLoaded', () => {
+    const list = document.getElementById('dm-list');
+    if (list) list.scrollTop = list.scrollHeight;
 
-    const session = E2E.getSession();
-    if (!session.passphrase) {
-        document.getElementById('e2e-unlock').style.display = 'block';
-        return alert('Сначала разблокируйте шифрование');
+    // Track last message id from rendered messages
+    const msgs = document.querySelectorAll('.dm-msg[data-id]');
+    if (msgs.length) {
+        lastMessageId = Math.max(...[...msgs].map(el => parseInt(el.dataset.id) || 0));
     }
 
-    const pKey = partnerPublicKey || await E2E.getPublicKey(PARTNER);
-    if (!pKey) return alert('У собеседника нет ключей. Пусть сначала откроет любой диалог.');
-
-    const encrypted = await E2E.encrypt(text, pKey, myPublicKey);
-
-    const resp = await fetch(window.location.pathname, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'X-CSRFToken': CSRF,
-        },
-        body: 'text=' + encodeURIComponent(encrypted),
-    });
-
-    if (resp.ok || resp.redirected) {
-        document.getElementById('msg-input').value = '';
-        // Immediately poll for new messages
-        await pollNewMessages();
-    }
-}
+    init();
+});
 </script>
 {% endblock %}
