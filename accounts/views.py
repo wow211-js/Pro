@@ -276,3 +276,98 @@ def poll_messages(request, username):
         }
         for m in msgs
     ]})
+
+
+@login_required
+def totp_setup(request):
+    """Setup TOTP 2FA."""
+    import pyotp, qrcode, io, base64 as b64
+    from django.http import HttpResponse
+
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'generate':
+            # Generate new secret
+            secret = pyotp.random_base32()
+            profile.totp_secret = secret
+            profile.totp_enabled = False
+            profile.save()
+            return redirect('totp_setup')
+
+        elif action == 'verify':
+            code = request.POST.get('code', '').strip()
+            if not profile.totp_secret:
+                messages.error(request, 'Сначала сгенерируйте секрет.')
+                return redirect('totp_setup')
+            totp = pyotp.TOTP(profile.totp_secret)
+            if totp.verify(code, valid_window=1):
+                profile.totp_enabled = True
+                profile.save()
+                messages.success(request, '2FA успешно включена!')
+                return redirect('profile')
+            else:
+                messages.error(request, 'Неверный код. Попробуйте ещё раз.')
+                return redirect('totp_setup')
+
+        elif action == 'disable':
+            code = request.POST.get('code', '').strip()
+            if profile.totp_enabled and profile.totp_secret:
+                totp = pyotp.TOTP(profile.totp_secret)
+                if totp.verify(code, valid_window=1):
+                    profile.totp_enabled = False
+                    profile.totp_secret = ''
+                    profile.save()
+                    messages.success(request, '2FA отключена.')
+                    return redirect('profile')
+                else:
+                    messages.error(request, 'Неверный код.')
+            return redirect('totp_setup')
+
+    # Generate QR code if secret exists
+    qr_data_url = None
+    if profile.totp_secret:
+        totp = pyotp.TOTP(profile.totp_secret)
+        uri = totp.provisioning_uri(
+            name=request.user.username,
+            issuer_name='nizhnevartovsk86.ru'
+        )
+        img = qrcode.make(uri)
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        qr_data_url = 'data:image/png;base64,' + b64.b64encode(buf.getvalue()).decode()
+
+    return render(request, 'accounts/totp_setup.html', {
+        'profile': profile,
+        'qr_data_url': qr_data_url,
+    })
+
+
+def totp_verify(request):
+    """TOTP verification step after login."""
+    if not request.session.get('totp_user_id'):
+        return redirect('login')
+
+    if request.method == 'POST':
+        import pyotp
+        from django.contrib.auth.models import User
+        from django.contrib.auth import login as auth_login
+
+        user_id = request.session.get('totp_user_id')
+        try:
+            user = User.objects.get(id=user_id)
+            profile = user.profile
+            code = request.POST.get('code', '').strip()
+            totp = pyotp.TOTP(profile.totp_secret)
+            if totp.verify(code, valid_window=1):
+                del request.session['totp_user_id']
+                auth_login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+                return redirect('profile')
+            else:
+                messages.error(request, 'Неверный код.')
+        except User.DoesNotExist:
+            return redirect('login')
+
+    return render(request, 'accounts/totp_verify.html')
