@@ -14,6 +14,8 @@ class UserProfile(models.Model):
         related_name='profile',
     )
     display_name = models.CharField('Отображаемое имя', max_length=64, blank=True)
+    totp_secret = models.CharField('TOTP секрет', max_length=32, blank=True)
+    totp_enabled = models.BooleanField('2FA включена', default=False)
     public_key = models.TextField('Публичный ключ', blank=True)
     encrypted_private_key = models.TextField('Зашифрованный приватный ключ', blank=True)
 
