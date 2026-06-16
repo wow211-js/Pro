@@ -223,9 +223,11 @@ async function sendEncrypted(e) {
             body: 'text=' + encodeURIComponent(encrypted),
         });
 
-        if (resp.ok || resp.redirected) {
+        if (resp.redirected) {
             document.getElementById('msg-input').value = '';
             await pollNewMessages();
+        } else if (resp.ok) {
+            alert('Сообщение не отправлено: сервер отклонил запрос (возможно, слишком длинное)');
         } else {
             alert('Ошибка отправки: ' + resp.status);
         }

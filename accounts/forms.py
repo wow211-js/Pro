@@ -76,7 +76,7 @@ class GuestChatMessageForm(forms.ModelForm):
 
 class DirectMessageForm(forms.Form):
     text = forms.CharField(
-        max_length=1000,
+        max_length=10000,
         label='',
         widget=forms.Textarea(attrs={
             'rows': 2,
