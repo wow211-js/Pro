@@ -83,6 +83,8 @@ const E2E = {
             return false;
         }
     },
+
+    storeSession(encryptedPrivateKey, passphrase) {
         localStorage.setItem('e2e_passphrase', passphrase);
         localStorage.setItem('e2e_private_key', encryptedPrivateKey);
     },
