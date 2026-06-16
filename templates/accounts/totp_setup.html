@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}Настройка 2FA{% endblock %}
+
+{% block content %}
+<section class="auth-panel">
+    <h1>Двухфакторная аутентификация</h1>
+
+    {% if profile.totp_enabled %}
+        <div class="message" style="margin-bottom:18px">✅ 2FA включена</div>
+        <p class="muted">Для отключения введите код из приложения:</p>
+        <form method="post" class="auth-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="disable">
+            <label>
+                <span>Код из приложения</span>
+                <input type="text" name="code" placeholder="123456" maxlength="6" autocomplete="one-time-code" autofocus>
+            </label>
+            <button type="submit" style="background:#ef4444">Отключить 2FA</button>
+        </form>
+    {% else %}
+        {% if not qr_data_url %}
+            <p class="muted">2FA не настроена. Нажмите чтобы сгенерировать QR-код:</p>
+            <form method="post" class="auth-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="generate">
+                <button type="submit">Создать QR-код</button>
+            </form>
+        {% else %}
+            <p class="muted">Отсканируйте QR-код в приложении <strong>Google Authenticator</strong>, <strong>Aegis</strong> или любом другом TOTP-приложении:</p>
+            <div style="text-align:center;margin:20px 0">
+                <img src="{{ qr_data_url }}" alt="QR код" style="width:200px;height:200px;border-radius:8px">
+            </div>
+            <p class="muted" style="font-size:0.85rem">После сканирования введите 6-значный код для подтверждения:</p>
+            <form method="post" class="auth-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="verify">
+                <label>
+                    <span>Код подтверждения</span>
+                    <input type="text" name="code" placeholder="123456" maxlength="6" autocomplete="one-time-code" autofocus>
+                </label>
+                <button type="submit">Включить 2FA</button>
+            </form>
+            <form method="post" class="auth-form" style="margin-top:8px">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="generate">
+                <button type="submit" class="secondary">Сгенерировать новый QR</button>
+            </form>
+        {% endif %}
+    {% endif %}
+
+    <p class="muted" style="margin-top:16px"><a href="{% url 'profile' %}">← Назад в профиль</a></p>
+</section>
+{% endblock %}
