@@ -227,12 +227,16 @@ def save_keys(request):
 
 @login_required
 def get_public_key(request, username):
-    """Get public key of a user (needed to encrypt messages for them)."""
+    """Get public key of a user. If requesting own keys, also return encrypted private key."""
     from django.contrib.auth.models import User
     from django.http import JsonResponse
     try:
         user = User.objects.get(username=username)
         profile = user.profile
-        return JsonResponse({'public_key': profile.public_key, 'username': username})
+        data = {'public_key': profile.public_key, 'username': username}
+        # Only return private key to the owner (authenticated)
+        if request.user.is_authenticated and request.user.username == username:
+            data['encrypted_private_key'] = profile.encrypted_private_key
+        return JsonResponse(data)
     except Exception:
         return JsonResponse({'error': 'not found'}, status=404)
