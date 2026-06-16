@@ -19,7 +19,7 @@
             <button type="submit" style="background:#ef4444">Отключить 2FA</button>
         </form>
     {% else %}
-        {% if not qr_data_url %}
+        {% if not totp_uri %}
             <p class="muted">2FA не настроена. Нажмите чтобы сгенерировать QR-код:</p>
             <form method="post" class="auth-form">
                 {% csrf_token %}
@@ -27,11 +27,11 @@
                 <button type="submit">Создать QR-код</button>
             </form>
         {% else %}
-            <p class="muted">Отсканируйте QR-код в приложении <strong>Google Authenticator</strong>, <strong>Aegis</strong> или любом другом TOTP-приложении:</p>
-            <div style="text-align:center;margin:20px 0">
-                <img src="{{ qr_data_url }}" alt="QR код" style="width:200px;height:200px;border-radius:8px">
+            <p class="muted">Отсканируйте QR-код в приложении <strong>Google Authenticator</strong> или <strong>Aegis</strong>:</p>
+            <div style="text-align:center;margin:20px 0;background:#fff;padding:16px;border-radius:8px;display:inline-block">
+                <div id="qrcode"></div>
             </div>
-            <p class="muted" style="font-size:0.85rem">После сканирования введите 6-значный код для подтверждения:</p>
+            <p class="muted" style="font-size:0.85rem">После сканирования введите 6-значный код:</p>
             <form method="post" class="auth-form">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="verify">
@@ -46,6 +46,17 @@
                 <input type="hidden" name="action" value="generate">
                 <button type="submit" class="secondary">Сгенерировать новый QR</button>
             </form>
+            <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+            <script>
+                QRCode.toCanvas(
+                    document.createElement('canvas'),
+                    "{{ totp_uri|escapejs }}",
+                    { width: 200, margin: 2 },
+                    function(err, canvas) {
+                        if (!err) document.getElementById('qrcode').appendChild(canvas);
+                    }
+                );
+            </script>
         {% endif %}
     {% endif %}
 
