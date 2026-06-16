@@ -240,3 +240,39 @@ def get_public_key(request, username):
         return JsonResponse(data)
     except Exception:
         return JsonResponse({'error': 'not found'}, status=404)
+
+
+@login_required
+def poll_messages(request, username):
+    """Return new messages since a given message ID."""
+    from django.contrib.auth.models import User
+    from django.http import JsonResponse
+    from django.db import models as dj_models
+
+    try:
+        partner = User.objects.get(username=username)
+    except User.DoesNotExist:
+        return JsonResponse({'error': 'not found'}, status=404)
+
+    since_id = int(request.GET.get('since', 0))
+
+    msgs = DirectMessage.objects.filter(
+        dj_models.Q(sender=request.user, recipient=partner) |
+        dj_models.Q(sender=partner, recipient=request.user),
+        id__gt=since_id,
+    ).order_by('created_at').values('id', 'text', 'created_at', 'sender__username')
+
+    # Mark incoming as read
+    DirectMessage.objects.filter(
+        sender=partner, recipient=request.user, is_read=False
+    ).update(is_read=True)
+
+    return JsonResponse({'messages': [
+        {
+            'id': m['id'],
+            'text': m['text'],
+            'created_at': m['created_at'].strftime('%d.%m %H:%M'),
+            'is_mine': m['sender__username'] == request.user.username,
+        }
+        for m in msgs
+    ]})
