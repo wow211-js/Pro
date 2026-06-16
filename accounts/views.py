@@ -299,7 +299,7 @@ def poll_messages(request, username):
 @login_required
 def totp_setup(request):
     """Setup TOTP 2FA."""
-    import pyotp, qrcode, io, base64 as b64
+    import pyotp
     from django.http import HttpResponse
 
     profile, _ = UserProfile.objects.get_or_create(user=request.user)
@@ -344,22 +344,18 @@ def totp_setup(request):
                     messages.error(request, 'Неверный код.')
             return redirect('totp_setup')
 
-    # Generate QR code if secret exists
-    qr_data_url = None
+    # Generate TOTP URI for QR code (rendered in browser via JS)
+    totp_uri = None
     if profile.totp_secret:
         totp = pyotp.TOTP(profile.totp_secret)
-        uri = totp.provisioning_uri(
+        totp_uri = totp.provisioning_uri(
             name=request.user.username,
             issuer_name='nizhnevartovsk86.ru'
         )
-        img = qrcode.make(uri)
-        buf = io.BytesIO()
-        img.save(buf, format='PNG')
-        qr_data_url = 'data:image/png;base64,' + b64.b64encode(buf.getvalue()).decode()
 
     return render(request, 'accounts/totp_setup.html', {
         'profile': profile,
-        'qr_data_url': qr_data_url,
+        'totp_uri': totp_uri,
     })
 
 
