@@ -10,6 +10,7 @@
         <div class="dm-avatar">{{ partner.username|first|upper }}</div>
         <strong>{{ partner.username }}</strong>
         <span id="e2e-status" class="e2e-badge e2e-loading" style="cursor:pointer" onclick="toggleFingerprints()" title="Нажмите для проверки ключей">🔒 …</span>
+        <span style="cursor:pointer;margin-left:8px;font-size:1.2rem" onclick="downloadKeyBackup()" title="Скачать резервную копию ключей">💾</span>
         <form method="post" action="{% url 'delete_conversation' partner.username %}" onsubmit="return confirm('Удалить весь диалог?')" style="margin-left:auto">
             {% csrf_token %}
             <button type="submit" class="clear-btn" title="Удалить диалог">🗑</button>
@@ -44,6 +45,12 @@
         </div>
         <p class="muted" style="margin-top:8px;font-size:0.85rem">
             <button onclick="autoGenerateKeys()" class="secondary" style="font-size:0.85rem">Забыли пароль? Сгенерировать новые ключи</button>
+        </p>
+        <p class="muted" style="margin-top:8px;font-size:0.85rem">
+            <label style="cursor:pointer;text-decoration:underline">
+                <input type="file" id="key-import" style="display:none" onchange="uploadKeyBackup(this)" accept=".json">
+                📂 Загрузить резервную копию ключей
+            </label>
         </p>
     </div>
 
@@ -162,6 +169,74 @@ async function unlockE2E() {
         setStatus('🔒 E2E ✓', 'e2e-ok');
         await decryptAll(data.encrypted_private_key, passphrase);
         startPolling();
+    }
+}
+
+function downloadKeyBackup() {
+    const session = E2E.getSession();
+    if (!session.privateKey || !myPublicKey) {
+        alert('Сначала разблокируйте шифрование');
+        return;
+    }
+    const data = {
+        username: MY_USERNAME,
+        public_key: myPublicKey,
+        encrypted_private_key: session.privateKey,
+        exported_at: new Date().toISOString(),
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `e2e-keys-${MY_USERNAME}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+async function uploadKeyBackup(input) {
+    const file = input.files[0];
+    if (!file) return;
+    input.value = '';
+    
+    try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        
+        if (data.username !== MY_USERNAME) {
+            alert('Файл ключей для другого пользователя: ' + data.username);
+            return;
+        }
+        if (!data.encrypted_private_key || !data.public_key) {
+            alert('Неверный формат файла ключей');
+            return;
+        }
+        
+        const session = E2E.getSession();
+        let passphrase = session.passphrase;
+        
+        if (!passphrase) {
+            passphrase = prompt('Введите пароль (passphrase) для этих ключей:');
+            if (!passphrase) return;
+        }
+        
+        const valid = await E2E.verifyPassphrase(data.encrypted_private_key, passphrase);
+        if (!valid) {
+            alert('Неверный пароль. Попробуйте другой файл или пароль.');
+            return;
+        }
+        
+        const save = await E2E.saveKeys(data.public_key, data.encrypted_private_key);
+        if (!save.ok) throw new Error(save.error || 'Failed to save');
+        
+        E2E.storeSession(data.encrypted_private_key, passphrase);
+        myPublicKey = data.public_key;
+        
+        alert('Ключи восстановлены. Страница перезагрузится.');
+        location.reload();
+    } catch (e) {
+        alert('Ошибка импорта: ' + e.message);
     }
 }
 

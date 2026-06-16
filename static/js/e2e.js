@@ -72,7 +72,17 @@ const E2E = {
         }
     },
 
-    storeSession(encryptedPrivateKey, passphrase) {
+    async verifyPassphrase(encryptedPrivateKey, passphrase) {
+        try {
+            await openpgp.decryptKey({
+                privateKey: await openpgp.readPrivateKey({ armoredKey: encryptedPrivateKey }),
+                passphrase,
+            });
+            return true;
+        } catch (e) {
+            return false;
+        }
+    },
         localStorage.setItem('e2e_passphrase', passphrase);
         localStorage.setItem('e2e_private_key', encryptedPrivateKey);
     },
