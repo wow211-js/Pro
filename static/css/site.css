@@ -908,3 +908,26 @@ h1 {
     background: var(--bg-input);
     color: var(--text);
 }
+
+/* ─── Fingerprint verification ───────────────────────────── */
+.fp-label {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.fp-code {
+    display: block;
+    font-family: monospace;
+    font-size: 0.9rem;
+    color: var(--text-heading);
+    background: var(--bg);
+    border: 1px solid var(--border-inner);
+    border-radius: 6px;
+    padding: 8px 12px;
+    letter-spacing: 0.08em;
+    word-break: break-all;
+}
