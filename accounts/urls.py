@@ -13,5 +13,6 @@ urlpatterns = [
     path('messages/<str:username>/', views.conversation, name='conversation'),
     # E2E key endpoints
     path('api/keys/save/', views.save_keys, name='save_keys'),
+    path('api/messages/<str:username>/poll/', views.poll_messages, name='poll_messages'),
     path('api/keys/<str:username>/', views.get_public_key, name='get_public_key'),
 ]
