@@ -21,6 +21,24 @@ def home(request):
     return render(request, 'accounts/home.html')
 
 
+from django.contrib.auth.views import LoginView as DjangoLoginView
+from django.contrib.auth import authenticate
+
+
+class CustomLoginView(DjangoLoginView):
+    def form_valid(self, form):
+        user = form.get_user()
+        try:
+            profile = user.profile
+            if profile.totp_enabled and profile.totp_secret:
+                # Don't log in yet — redirect to TOTP check
+                self.request.session['totp_user_id'] = user.id
+                return redirect('totp_verify')
+        except Exception:
+            pass
+        return super().form_valid(form)
+
+
 def signup(request):
     if request.method == 'POST':
         form = SignUpForm(request.POST)
