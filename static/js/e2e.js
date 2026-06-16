@@ -1,4 +1,4 @@
-// E2E Encryption using OpenPGP.js (ECC Curve25519 - fast generation)
+// E2E Encryption using OpenPGP.js (ECC Curve25519)
 
 const E2E = {
     async generateKeys(username, passphrase) {
@@ -31,6 +31,17 @@ const E2E = {
         if (!resp.ok) return null;
         const data = await resp.json();
         return data.public_key || null;
+    },
+
+    async getFingerprint(armoredPublicKey) {
+        try {
+            const key = await openpgp.readKey({ armoredKey: armoredPublicKey });
+            const fp = key.getFingerprint().toUpperCase();
+            // Format as groups of 4: A1B2 C3D4 E5F6 ...
+            return fp.match(/.{1,4}/g).join(' ');
+        } catch(e) {
+            return null;
+        }
     },
 
     async encrypt(text, recipientPublicKeyArmored, senderPublicKeyArmored) {
