@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block title %}Подтверждение входа{% endblock %}
+
+{% block content %}
+<section class="auth-panel">
+    <h1>Двухфакторная аутентификация</h1>
+    <p class="muted">Введите 6-значный код из вашего приложения-аутентификатора:</p>
+    <form method="post" class="auth-form">
+        {% csrf_token %}
+        <label>
+            <span>Код</span>
+            <input type="text" name="code" placeholder="123456" maxlength="6" autocomplete="one-time-code" autofocus style="font-size:1.4rem;letter-spacing:0.2em;text-align:center">
+        </label>
+        {% for message in messages %}
+            <strong class="error">{{ message }}</strong>
+        {% endfor %}
+        <button type="submit">Подтвердить</button>
+    </form>
+</section>
+{% endblock %}
