@@ -1,12 +1,15 @@
 from django.urls import path
 
 from . import views
+from .views import CustomLoginView
 
 urlpatterns = [
     path('', views.home, name='home'),
     path('register/', views.signup, name='signup'),
     path('profile/', views.profile, name='profile'),
     path('chat/clear/', views.clear_chat, name='clear_chat'),
+    path('2fa/setup/', views.totp_setup, name='totp_setup'),
+    path('2fa/verify/', views.totp_verify, name='totp_verify'),
     path('messages/', views.inbox, name='inbox'),
     path('messages/new/', views.new_conversation, name='new_conversation'),
     path('messages/<str:username>/delete/', views.delete_conversation, name='delete_conversation'),
