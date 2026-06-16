@@ -25,7 +25,10 @@
             </div>
         </dl>
 
-        <form method="post" class="auth-form" style="margin-top:24px">
+        <div style="margin-top:16px">
+            <a href="{% url 'totp_setup' %}" class="secondary">🔐 Настройка 2FA</a>
+        </div>
+        <form method="post" class="auth-form" style="margin-top:16px">
             {% csrf_token %}
             <label>
                 <span>Изменить отображаемое имя</span>
