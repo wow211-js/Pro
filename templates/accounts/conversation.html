@@ -8,11 +8,31 @@
         <a href="{% url 'inbox' %}" class="back-link">← Назад</a>
         <div class="dm-avatar">{{ partner.username|first|upper }}</div>
         <strong>{{ partner.username }}</strong>
-        <span id="e2e-status" class="e2e-badge e2e-loading">🔒 …</span>
+        <span id="e2e-status" class="e2e-badge e2e-loading" style="cursor:pointer" onclick="toggleFingerprints()" title="Нажмите для проверки ключей">🔒 …</span>
         <form method="post" action="{% url 'delete_conversation' partner.username %}" onsubmit="return confirm('Удалить весь диалог?')" style="margin-left:auto">
             {% csrf_token %}
             <button type="submit" class="clear-btn" title="Удалить диалог">🗑</button>
         </form>
+    </div>
+
+    {# Fingerprint verification panel #}
+    <div id="fp-panel" class="e2e-unlock-panel" style="display:none">
+        <p><strong>🔍 Проверка ключей</strong> — сравните отпечатки через другой канал (звонок, личная встреча)</p>
+        <div style="display:grid;gap:10px;margin-top:12px">
+            <div>
+                <div class="fp-label">Ваш отпечаток (@{{ user.username }}):</div>
+                <code id="my-fp" class="fp-code">вычисление...</code>
+            </div>
+            <div>
+                <div class="fp-label">Отпечаток @{{ partner.username }}:</div>
+                <code id="partner-fp" class="fp-code">вычисление...</code>
+            </div>
+        </div>
+        <p class="muted" style="margin-top:12px;font-size:0.85rem">
+            ✅ Если отпечатки совпадают с тем, что видит собеседник — переписка защищена.<br>
+            ❌ Если не совпадают — возможна атака посредника (MITM).
+        </p>
+        <button onclick="toggleFingerprints()" class="secondary" style="margin-top:8px">Закрыть</button>
     </div>
 
     <div id="e2e-unlock" class="e2e-unlock-panel" style="display:none">
@@ -44,15 +64,15 @@
     </form>
 </section>
 
-{% load static %}
-<!-- Load OpenPGP first, then e2e.js, then inline script -->
 <script src="https://cdn.jsdelivr.net/npm/openpgp@5.11.2/dist/openpgp.min.js"></script>
+{% load static %}
 <script src="{% static 'js/e2e.js' %}"></script>
 <script>
 const PARTNER = "{{ partner.username }}";
 const MY_USERNAME = "{{ user.username }}";
 const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
 let myPublicKey = null;
+let partnerPublicKey = null;
 
 async function init() {
     const session = E2E.getSession();
@@ -60,7 +80,7 @@ async function init() {
     const data = await resp.json();
 
     if (!data.public_key) {
-        document.getElementById('unlock-label').textContent = 'Первый вход: введите пароль от аккаунта для создания ключей шифрования:';
+        document.getElementById('unlock-label').textContent = 'Первый вход: введите пароль от аккаунта для создания ключей:';
         document.getElementById('e2e-unlock').style.display = 'block';
         setStatus('⚠️ Нет ключей', 'e2e-warn');
         return;
@@ -68,13 +88,35 @@ async function init() {
 
     myPublicKey = data.public_key;
 
+    // Load partner key and show fingerprints
+    partnerPublicKey = await E2E.getPublicKey(PARTNER);
+    await showFingerprints();
+
     if (session.passphrase && session.privateKey) {
         await decryptAll(session.privateKey, session.passphrase);
-        setStatus('🔒 E2E', 'e2e-ok');
+        setStatus('🔒 E2E ✓', 'e2e-ok');
     } else {
         document.getElementById('e2e-unlock').style.display = 'block';
         setStatus('🔑 Заблокировано', 'e2e-warn');
     }
+}
+
+async function showFingerprints() {
+    if (myPublicKey) {
+        const myFp = await E2E.getFingerprint(myPublicKey);
+        document.getElementById('my-fp').textContent = myFp || '—';
+    }
+    if (partnerPublicKey) {
+        const partnerFp = await E2E.getFingerprint(partnerPublicKey);
+        document.getElementById('partner-fp').textContent = partnerFp || 'нет ключей';
+    } else {
+        document.getElementById('partner-fp').textContent = 'у собеседника нет ключей';
+    }
+}
+
+function toggleFingerprints() {
+    const panel = document.getElementById('fp-panel');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
 }
 
 async function unlockE2E() {
@@ -91,8 +133,9 @@ async function unlockE2E() {
             await E2E.saveKeys(publicKey, privateKey);
             E2E.storeSession(privateKey, passphrase);
             myPublicKey = publicKey;
+            await showFingerprints();
             document.getElementById('e2e-unlock').style.display = 'none';
-            setStatus('🔒 E2E', 'e2e-ok');
+            setStatus('🔒 E2E ✓', 'e2e-ok');
         } catch(e) {
             setStatus('❌ Ошибка', 'e2e-warn');
             alert('Ошибка: ' + e.message);
@@ -101,7 +144,7 @@ async function unlockE2E() {
         myPublicKey = data.public_key;
         E2E.storeSession(data.encrypted_private_key, passphrase);
         document.getElementById('e2e-unlock').style.display = 'none';
-        setStatus('🔒 E2E', 'e2e-ok');
+        setStatus('🔒 E2E ✓', 'e2e-ok');
         await decryptAll(data.encrypted_private_key, passphrase);
     }
 }
@@ -127,10 +170,10 @@ async function sendEncrypted(e) {
         return alert('Сначала разблокируйте шифрование');
     }
 
-    const partnerPubKey = await E2E.getPublicKey(PARTNER);
-    if (!partnerPubKey) return alert('У собеседника нет ключей. Пусть сначала откроет любой диалог.');
+    const pKey = partnerPublicKey || await E2E.getPublicKey(PARTNER);
+    if (!pKey) return alert('У собеседника нет ключей. Пусть сначала откроет любой диалог.');
 
-    const encrypted = await E2E.encrypt(text, partnerPubKey, myPublicKey);
+    const encrypted = await E2E.encrypt(text, pKey, myPublicKey);
 
     const form = document.createElement('form');
     form.method = 'POST';
