@@ -42,6 +42,9 @@
             <input type="password" id="unlock-passphrase" placeholder="Пароль от аккаунта" class="e2e-input">
             <button onclick="unlockE2E()" class="button-link" style="white-space:nowrap">Разблокировать</button>
         </div>
+        <p class="muted" style="margin-top:8px;font-size:0.85rem">
+            <button onclick="autoGenerateKeys()" class="secondary" style="font-size:0.85rem">Забыли пароль? Сгенерировать новые ключи</button>
+        </p>
     </div>
 
     <div class="chat-list dm-messages" id="dm-list">
@@ -80,15 +83,11 @@ async function init() {
     const data = await resp.json();
 
     if (!data.public_key) {
-        document.getElementById('unlock-label').textContent = 'Первый вход: введите пароль от аккаунта для создания ключей:';
-        document.getElementById('e2e-unlock').style.display = 'block';
-        setStatus('⚠️ Нет ключей', 'e2e-warn');
+        await autoGenerateKeys();
         return;
     }
 
     myPublicKey = data.public_key;
-
-    // Load partner key and show fingerprints
     partnerPublicKey = await E2E.getPublicKey(PARTNER);
     await showFingerprints();
 
@@ -99,6 +98,32 @@ async function init() {
     } else {
         document.getElementById('e2e-unlock').style.display = 'block';
         setStatus('🔑 Заблокировано', 'e2e-warn');
+    }
+}
+
+async function autoGenerateKeys() {
+    setStatus('⏳ Генерация ключей…', 'e2e-loading');
+    try {
+        const bytes = crypto.getRandomValues(new Uint8Array(32));
+        const autoPass = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+        
+        const { privateKey, publicKey } = await E2E.generateKeys(MY_USERNAME, autoPass);
+        const save = await E2E.saveKeys(publicKey, privateKey);
+        if (!save.ok) throw new Error(save.error || 'Failed to save keys');
+        
+        E2E.storeSession(privateKey, autoPass);
+        myPublicKey = publicKey;
+        partnerPublicKey = await E2E.getPublicKey(PARTNER);
+        await showFingerprints();
+        
+        document.getElementById('e2e-unlock').style.display = 'none';
+        setStatus('🔒 E2E ✓', 'e2e-ok');
+        startPolling();
+    } catch(e) {
+        setStatus('❌ Ошибка', 'e2e-warn');
+        alert('Ошибка генерации ключей: ' + e.message);
+        document.getElementById('e2e-unlock').style.display = 'block';
+        document.getElementById('unlock-label').textContent = 'Ошибка авто-генерации. Введите пароль вручную:';
     }
 }
 
@@ -129,19 +154,7 @@ async function unlockE2E() {
     const data = await resp.json();
 
     if (!data.public_key) {
-        try {
-            const { privateKey, publicKey } = await E2E.generateKeys(MY_USERNAME, passphrase);
-            await E2E.saveKeys(publicKey, privateKey);
-            E2E.storeSession(privateKey, passphrase);
-            myPublicKey = publicKey;
-            await showFingerprints();
-            document.getElementById('e2e-unlock').style.display = 'none';
-            setStatus('🔒 E2E ✓', 'e2e-ok');
-            startPolling();
-        } catch(e) {
-            setStatus('❌ Ошибка', 'e2e-warn');
-            alert('Ошибка: ' + e.message);
-        }
+        await autoGenerateKeys();
     } else {
         myPublicKey = data.public_key;
         E2E.storeSession(data.encrypted_private_key, passphrase);
@@ -225,7 +238,6 @@ async function pollNewMessages() {
         const list = document.getElementById('dm-list');
         const wasAtBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
 
-        // Remove empty chat placeholder if present
         const empty = list.querySelector('.empty-chat');
         if (empty) empty.remove();
 
@@ -242,7 +254,6 @@ async function pollNewMessages() {
                 plaintext = await E2E.decrypt(msg.text, session.privateKey, session.passphrase);
             }
 
-            // XSS-safe HTML
             const safeText = plaintext
                 .replace(/&/g, '&amp;')
                 .replace(/</g, '&lt;')
@@ -262,7 +273,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const list = document.getElementById('dm-list');
     if (list) list.scrollTop = list.scrollHeight;
 
-    // Track last message id from rendered messages
     const msgs = document.querySelectorAll('.dm-msg[data-id]');
     if (msgs.length) {
         lastMessageId = Math.max(...[...msgs].map(el => parseInt(el.dataset.id) || 0));
