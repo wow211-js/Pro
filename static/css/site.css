@@ -111,11 +111,13 @@ body {
 }
 
 body, .site-header, .auth-panel, .profile, .chat-panel, .wide-panel,
-.chat-message, .dm-item, .dm-avatar, .dm-msg, .e2e-unlock-panel, .fp-code,
+.chat-message, .dm-item, .dm-avatar, .dm-msg, .dm-msg-in, .dm-msg-out,
+.e2e-unlock-panel, .fp-code, .profile dl div,
 .internet-home, .internet-icon, .nv-logo, .hero,
 button, .button-link, .secondary, .theme-toggle,
 input, textarea, .chat-form textarea, .auth-form input, .guest-fields input, .e2e-input,
-.counter, .clear-btn, .dm-badge, .chat-heading span {
+.counter, .clear-btn, .dm-badge, .chat-heading span,
+.empty-chat, .message {
     transition: background-color 0.5s ease-in-out, color 0.5s ease-in-out, border-color 0.5s ease-in-out, box-shadow 0.5s ease-in-out;
 }
 
