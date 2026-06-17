@@ -17,7 +17,7 @@
             </div>
             <div>
                 <dt>Шифрование (E2E)</dt>
-                <dd id="key-status">Проверка...</dd>
+                <dd id="key-status" style="cursor:pointer" title="Нажмите чтобы скачать резервную копию ключей">Проверка...</dd>
             </div>
             <div>
                 <dt>Дата регистрации</dt>
@@ -81,12 +81,45 @@
 <script>
     var list = document.getElementById('chat-list');
     if (list) list.scrollTop = list.scrollHeight;
-</script>
-<script>
-fetch('/api/keys/{{ user.username }}/').then(r=>r.json()).then(d=>{
-    const el = document.getElementById('key-status');
-    if(d.public_key) { el.textContent = '🔒 Ключи настроены'; el.style.color='var(--online-fg)'; }
-    else { el.textContent = '⚠️ Ключи не созданы — откройте любой диалог'; el.style.color='#f59e0b'; }
-});
+
+    function downloadKeyBackup() {
+        const username = "{{ user.username }}";
+        fetch('/api/keys/' + username + '/').then(r=>r.json()).then(data=>{
+            if (!data.encrypted_private_key) {
+                alert('Ключи не найдены. Откройте любой диалог для создания.');
+                return;
+            }
+            const session = {
+                passphrase: localStorage.getItem('e2e_passphrase'),
+                privateKey: localStorage.getItem('e2e_private_key'),
+            };
+            if (!session.passphrase || !session.privateKey) {
+                alert('Ключи на сервере есть, но в браузере не сохранены. Откройте любой диалог и введите пароль.');
+                return;
+            }
+            const blob = new Blob([JSON.stringify({
+                username: username,
+                public_key: data.public_key,
+                encrypted_private_key: session.privateKey,
+                exported_at: new Date().toISOString(),
+            }, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'e2e-keys-' + username + '.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }).catch(()=>alert('Ошибка при получении ключей'));
+    }
+
+    document.getElementById('key-status').addEventListener('click', downloadKeyBackup);
+
+    fetch('/api/keys/{{ user.username }}/').then(r=>r.json()).then(d=>{
+        const el = document.getElementById('key-status');
+        if(d.public_key) { el.textContent = '🔒 Ключи настроены (кликните для скачивания)'; el.style.color='var(--online-fg)'; }
+        else { el.textContent = '⚠️ Ключи не созданы — откройте любой диалог'; el.style.color='#f59e0b'; }
+    });
 </script>
 {% endblock %}

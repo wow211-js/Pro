@@ -119,7 +119,6 @@ async function autoGenerateKeys() {
         document.getElementById('e2e-unlock').style.display = 'none';
         setStatus('🔒 E2E ✓', 'e2e-ok');
         startPolling();
-        setTimeout(() => autoBackupKeys(), 500);
     } catch(e) {
         setStatus('❌ Ошибка', 'e2e-warn');
         alert('Ошибка генерации ключей: ' + e.message);
@@ -163,28 +162,7 @@ async function unlockE2E() {
         setStatus('🔒 E2E ✓', 'e2e-ok');
         await decryptAll(data.encrypted_private_key, passphrase);
         startPolling();
-        setTimeout(() => autoBackupKeys(), 500);
     }
-}
-
-function autoBackupKeys() {
-    const session = E2E.getSession();
-    if (!session.privateKey || !myPublicKey) return;
-    const data = {
-        username: MY_USERNAME,
-        public_key: myPublicKey,
-        encrypted_private_key: session.privateKey,
-        exported_at: new Date().toISOString(),
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `e2e-keys-${MY_USERNAME}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
 }
 
 async function decryptAll(encPrivKey, passphrase) {
