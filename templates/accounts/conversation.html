@@ -12,7 +12,7 @@
         <span id="e2e-status" class="e2e-badge e2e-loading" style="cursor:pointer" onclick="toggleFingerprints()" title="Нажмите для проверки ключей">🔒 …</span>
         <form method="post" action="{% url 'delete_conversation' partner.username %}" onsubmit="return confirm('Удалить весь диалог?')" style="margin-left:auto">
             {% csrf_token %}
-            <button type="submit" class="clear-btn" title="Удалить диалог">×</button>
+            <button type="submit" class="clear-btn" title="Удалить диалог">🗑</button>
         </form>
     </div>
 

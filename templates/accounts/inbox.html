@@ -32,7 +32,7 @@
                     </a>
                     <form method="post" action="{% url 'delete_conversation' conv.partner.username %}" onsubmit="return confirm('Удалить диалог с {{ conv.partner.username }}?')">
                         {% csrf_token %}
-                        <button type="submit" class="clear-btn" title="Удалить диалог">×</button>
+                        <button type="submit" class="clear-btn" title="Удалить диалог">🗑</button>
                     </form>
                 </div>
             {% endfor %}

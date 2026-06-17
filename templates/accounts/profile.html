@@ -45,7 +45,7 @@
                 {% if user.is_staff %}
                     <form method="post" action="{% url 'clear_chat' %}" onsubmit="return confirm('Очистить весь чат?')">
                         {% csrf_token %}
-                        <button type="submit" class="clear-btn" title="Очистить чат">×</button>
+                        <button type="submit" class="clear-btn" title="Очистить чат">🗑</button>
                     </form>
                 {% endif %}
             </div>
