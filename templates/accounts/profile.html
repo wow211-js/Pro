@@ -118,7 +118,7 @@
 
     fetch('/api/keys/{{ user.username }}/').then(r=>r.json()).then(d=>{
         const el = document.getElementById('key-status');
-        if(d.public_key) { el.textContent = '🔒 Ключи настроены (кликните для скачивания)'; el.style.color='var(--online-fg)'; }
+        if(d.public_key) { el.textContent = '🔒 Ключи настроены'; el.style.color='var(--online-fg)'; }
         else { el.textContent = '⚠️ Ключи не созданы — откройте любой диалог'; el.style.color='#f59e0b'; }
     });
 </script>
