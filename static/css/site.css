@@ -395,6 +395,8 @@ h1 {
     border: 1px solid var(--border-inner);
     border-radius: 8px;
     background: var(--bg-code);
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 .chat-meta {
@@ -413,6 +415,8 @@ h1 {
 .chat-message p {
     margin: 0;
     line-height: 1.45;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 .empty-chat {
@@ -829,10 +833,14 @@ h1 {
     border-radius: 12px;
     font-size: 0.95rem;
     line-height: 1.45;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 .dm-msg p {
     margin: 0 0 4px;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 .dm-msg time {
