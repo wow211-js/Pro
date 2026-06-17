@@ -1,14 +1,19 @@
 from datetime import timedelta
+import json
 
 from django.contrib import messages
-from django.contrib.auth import login
+from django.contrib.auth import login, authenticate
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.models import User
+from django.db import models
+from django.db.models.functions import Coalesce
+from django.db.models import Q, Count, Max, OuterRef, Subquery
+from django.http import JsonResponse, HttpResponseNotAllowed
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .forms import ChatMessageForm, DirectMessageForm, ProfileEditForm, SignUpForm
-from django.db import models
 from .models import ChatMessage, DirectMessage, UserProfile
 
 
@@ -22,7 +27,6 @@ def home(request):
 
 
 from django.contrib.auth.views import LoginView as DjangoLoginView
-from django.contrib.auth import authenticate
 
 
 class CustomLoginView(DjangoLoginView):
@@ -31,7 +35,6 @@ class CustomLoginView(DjangoLoginView):
         try:
             profile = user.profile
             if profile.totp_enabled and profile.totp_secret:
-                # Don't log in yet — redirect to TOTP check
                 self.request.session['totp_user_id'] = user.id
                 return redirect('totp_verify')
         except Exception:
@@ -86,7 +89,6 @@ def profile(request):
     })
 
 
-
 @login_required
 @user_passes_test(lambda user: user.is_staff)
 @require_POST
@@ -98,39 +100,55 @@ def clear_chat(request):
 
 @login_required
 def inbox(request):
-    """List of all conversations for current user."""
-    from django.db.models import Q, Max, OuterRef, Subquery
-    from django.contrib.auth.models import User
+    """List of all conversations for current user — optimized with annotate."""
+    user = request.user
 
-    # Get all users this person has exchanged messages with
-    sent_to = DirectMessage.objects.filter(sender=request.user).values_list('recipient', flat=True)
-    received_from = DirectMessage.objects.filter(recipient=request.user).values_list('sender', flat=True)
-    partner_ids = set(list(sent_to) + list(received_from))
-    partners = User.objects.filter(id__in=partner_ids)
+    # Get latest message per conversation partner via subquery
+    latest_msg = DirectMessage.objects.filter(
+        (Q(sender=user, recipient=OuterRef('id')) |
+         Q(sender=OuterRef('id'), recipient=user))
+    ).order_by('-created_at').values('text', 'created_at')[:1]
 
-    conversations = []
-    for partner in partners:
-        last_msg = DirectMessage.objects.filter(
-            (models.Q(sender=request.user, recipient=partner) |
-             models.Q(sender=partner, recipient=request.user))
-        ).last()
-        unread = DirectMessage.objects.filter(sender=partner, recipient=request.user, is_read=False).count()
-        conversations.append({
-            'partner': partner,
-            'last_msg': last_msg,
-            'unread': unread,
-        })
+    # Unread count per partner
+    unread_count = DirectMessage.objects.filter(
+        sender=OuterRef('id'), recipient=user, is_read=False
+    ).values('sender').annotate(cnt=Count('id')).values('cnt')
 
-    conversations.sort(key=lambda x: x['last_msg'].created_at if x['last_msg'] else timezone.now(), reverse=True)
+    # Partners (users we've exchanged messages with)
+    partner_ids = DirectMessage.objects.filter(
+        Q(sender=user) | Q(recipient=user)
+    ).values(
+        'sender', 'recipient'
+    ).annotate(
+        latest=Max('created_at')
+    ).values_list('sender', 'recipient')
+
+    # Flatten unique partner IDs excluding self
+    ids = set()
+    for s, r in partner_ids:
+        ids.add(s if s != user.id else r)
+    ids.discard(user.id)
+
+    partners = User.objects.filter(id__in=ids).annotate(
+        last_msg_text=Subquery(latest_msg.values('text')),
+        last_msg_time=Subquery(latest_msg.values('created_at')),
+        unread=Coalesce(Subquery(unread_count), 0),
+    )
+
+    conversations = sorted([
+        {
+            'partner': p,
+            'last_msg': {'text': p.last_msg_text, 'created_at': p.last_msg_time} if p.last_msg_text else None,
+            'unread': p.unread,
+        }
+        for p in partners
+    ], key=lambda x: x['last_msg']['created_at'] if x['last_msg'] else timezone.now(), reverse=True)
 
     return render(request, 'accounts/inbox.html', {'conversations': conversations})
 
 
 @login_required
 def conversation(request, username):
-    from django.contrib.auth.models import User
-    from django.db import models as dj_models
-
     try:
         partner = User.objects.get(username=username)
     except User.DoesNotExist:
@@ -156,8 +174,8 @@ def conversation(request, username):
         form = DirectMessageForm()
 
     msgs = DirectMessage.objects.filter(
-        dj_models.Q(sender=request.user, recipient=partner) |
-        dj_models.Q(sender=partner, recipient=request.user)
+        Q(sender=request.user, recipient=partner) |
+        Q(sender=partner, recipient=request.user)
     ).order_by('created_at')
 
     return render(request, 'accounts/conversation.html', {
@@ -170,9 +188,6 @@ def conversation(request, username):
 @login_required
 def new_conversation(request):
     """Search users by tag and start a conversation."""
-    from django.contrib.auth.models import User
-    from django.db.models import Q
-
     query = request.GET.get('q', '').strip().lstrip('@')
     results = []
 
@@ -202,9 +217,6 @@ def new_conversation(request):
 @require_POST
 def delete_conversation(request, username):
     """Delete all direct messages between current user and partner."""
-    from django.contrib.auth.models import User
-    from django.db import models as dj_models
-
     try:
         partner = User.objects.get(username=username)
     except User.DoesNotExist:
@@ -215,8 +227,8 @@ def delete_conversation(request, username):
         return redirect('inbox')
 
     count, _ = DirectMessage.objects.filter(
-        dj_models.Q(sender=request.user, recipient=partner) |
-        dj_models.Q(sender=partner, recipient=request.user)
+        Q(sender=request.user, recipient=partner) |
+        Q(sender=partner, recipient=request.user)
     ).delete()
 
     messages.success(request, f'Диалог удалён. Удалено сообщений: {count}.')
@@ -226,34 +238,28 @@ def delete_conversation(request, username):
 @login_required
 def save_keys(request):
     """Save E2E keys for the user."""
-    if request.method == 'POST':
-        import json as _json
-        try:
-            data = _json.loads(request.body)
-            profile, _ = UserProfile.objects.get_or_create(user=request.user)
-            profile.public_key = data.get('public_key', '')
-            profile.encrypted_private_key = data.get('encrypted_private_key', '')
-            profile.save()
-            from django.http import JsonResponse
-            return JsonResponse({'ok': True})
-        except Exception as e:
-            from django.http import JsonResponse
-            return JsonResponse({'ok': False, 'error': str(e)}, status=400)
-    from django.http import HttpResponseNotAllowed
-    return HttpResponseNotAllowed(['POST'])
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+
+    try:
+        data = json.loads(request.body)
+        profile, _ = UserProfile.objects.get_or_create(user=request.user)
+        profile.public_key = data.get('public_key', '')
+        profile.encrypted_private_key = data.get('encrypted_private_key', '')
+        profile.save()
+        return JsonResponse({'ok': True})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'error': str(e)}, status=400)
 
 
 @login_required
 def get_public_key(request, username):
     """Get public key of a user. If requesting own keys, also return encrypted private key."""
-    from django.contrib.auth.models import User
-    from django.http import JsonResponse
     try:
         user = User.objects.get(username=username)
         profile = user.profile
         data = {'public_key': profile.public_key, 'username': username}
-        # Only return private key to the owner (authenticated)
-        if request.user.is_authenticated and request.user.username == username:
+        if request.user.username == username:
             data['encrypted_private_key'] = profile.encrypted_private_key
         return JsonResponse(data)
     except Exception:
@@ -263,10 +269,6 @@ def get_public_key(request, username):
 @login_required
 def poll_messages(request, username):
     """Return new messages since a given message ID."""
-    from django.contrib.auth.models import User
-    from django.http import JsonResponse
-    from django.db import models as dj_models
-
     try:
         partner = User.objects.get(username=username)
     except User.DoesNotExist:
@@ -275,15 +277,16 @@ def poll_messages(request, username):
     since_id = int(request.GET.get('since', 0))
 
     msgs = DirectMessage.objects.filter(
-        dj_models.Q(sender=request.user, recipient=partner) |
-        dj_models.Q(sender=partner, recipient=request.user),
+        Q(sender=request.user, recipient=partner) |
+        Q(sender=partner, recipient=request.user),
         id__gt=since_id,
     ).order_by('created_at').values('id', 'text', 'created_at', 'sender__username')
 
     # Mark incoming as read
-    DirectMessage.objects.filter(
-        sender=partner, recipient=request.user, is_read=False
-    ).update(is_read=True)
+    if msgs:
+        DirectMessage.objects.filter(
+            sender=partner, recipient=request.user, is_read=False
+        ).update(is_read=True)
 
     return JsonResponse({'messages': [
         {
@@ -308,7 +311,6 @@ def totp_setup(request):
         action = request.POST.get('action')
 
         if action == 'generate':
-            # Generate new secret
             secret = pyotp.random_base32()
             profile.totp_secret = secret
             profile.totp_enabled = False
@@ -344,7 +346,6 @@ def totp_setup(request):
                     messages.error(request, 'Неверный код.')
             return redirect('totp_setup')
 
-    # Generate TOTP URI for QR code (rendered in browser via JS)
     totp_uri = None
     if profile.totp_secret:
         totp = pyotp.TOTP(profile.totp_secret)
@@ -366,7 +367,6 @@ def totp_verify(request):
 
     if request.method == 'POST':
         import pyotp
-        from django.contrib.auth.models import User
         from django.contrib.auth import login as auth_login
 
         user_id = request.session.get('totp_user_id')
