@@ -651,11 +651,12 @@ h1 {
     background: #ef4444;
     border: none;
     cursor: pointer;
-    transition: background 0.15s;
+    transition: background-color 0.5s ease-in-out, transform 0.15s ease-in-out;
 }
 
 .clear-btn:hover {
     background: #dc2626;
+    transform: scale(1.05);
 }
 
 /* ─── Home layout ────────────────────────────────────────── */
@@ -848,8 +849,10 @@ h1 {
 }
 
 .dm-msg-out time {
-    color: rgba(255,255,255,0.65);
+    color: var(--btn-text);
+    opacity: 0.65;
     text-align: right;
+    transition: opacity 0.5s ease-in-out;
 }
 
 .dm-msg-in {
