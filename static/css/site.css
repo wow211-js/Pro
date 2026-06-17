@@ -102,24 +102,16 @@
     box-sizing: border-box;
 }
 
+*, *::before, *::after {
+    transition: background-color 0.5s ease-in-out, color 0.5s ease-in-out, border-color 0.5s ease-in-out, box-shadow 0.5s ease-in-out, fill 0.5s ease-in-out, stroke 0.5s ease-in-out;
+}
+
 body {
     margin: 0;
     min-height: 100vh;
     background: var(--bg);
     color: var(--text);
-    transition: background 0.5s ease-in-out, color 0.5s ease-in-out;
-}
-
-body, .site-header, .auth-panel, .profile, .chat-panel, .wide-panel,
-.chat-message, .dm-item, .dm-avatar, .dm-msg, .dm-msg-in, .dm-msg-out,
-.e2e-badge, .e2e-ok, .e2e-warn, .e2e-loading,
-.e2e-unlock-panel, .fp-code, .profile dl div, .dm-conv-header,
-.internet-home, .internet-icon, .nv-logo, .hero,
-button, .button-link, .secondary, .theme-toggle,
-input, textarea, .chat-form textarea, .auth-form input, .guest-fields input, .e2e-input,
-.counter, .clear-btn, .dm-badge, .chat-heading span,
-.empty-chat, .message {
-    transition: background-color 0.5s ease-in-out, color 0.5s ease-in-out, border-color 0.5s ease-in-out, box-shadow 0.5s ease-in-out;
+    transition: background-color 0.5s ease-in-out, color 0.5s ease-in-out;
 }
 
 a {
