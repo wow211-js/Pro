@@ -112,7 +112,8 @@ body {
 
 body, .site-header, .auth-panel, .profile, .chat-panel, .wide-panel,
 .chat-message, .dm-item, .dm-avatar, .dm-msg, .dm-msg-in, .dm-msg-out,
-.e2e-unlock-panel, .fp-code, .profile dl div,
+.e2e-badge, .e2e-ok, .e2e-warn, .e2e-loading,
+.e2e-unlock-panel, .fp-code, .profile dl div, .dm-conv-header,
 .internet-home, .internet-icon, .nv-logo, .hero,
 button, .button-link, .secondary, .theme-toggle,
 input, textarea, .chat-form textarea, .auth-form input, .guest-fields input, .e2e-input,
