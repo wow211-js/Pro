@@ -114,18 +114,24 @@ body {
     transition: background-color 0.5s ease-in-out, color 0.5s ease-in-out;
 }
 
-/* ─── Scrollbar hide (PC) ─────────────────────────────────── */
+/* ─── Scrollbar minimal ─────────────────────────────────────── */
 html, body, .chat-list, .dm-messages {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
 }
 html::-webkit-scrollbar,
 body::-webkit-scrollbar,
 .chat-list::-webkit-scrollbar,
 .dm-messages::-webkit-scrollbar {
-    width: 0;
+    width: 4px;
     background: transparent;
-    display: none;
+}
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb,
+.chat-list::-webkit-scrollbar-thumb,
+.dm-messages::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
 }
 
 a {
