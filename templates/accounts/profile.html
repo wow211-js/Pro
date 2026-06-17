@@ -42,7 +42,6 @@
         <div class="chat-heading">
             <h2>Общий чат</h2>
             <div class="chat-heading-actions">
-                <span>{{ chat_messages|length }}</span>
                 {% if user.is_staff %}
                     <form method="post" action="{% url 'clear_chat' %}" onsubmit="return confirm('Очистить весь чат?')">
                         {% csrf_token %}
