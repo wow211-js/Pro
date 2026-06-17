@@ -227,14 +227,14 @@ button:hover,
     min-height: calc(100vh - 170px);
     place-items: center;
     border-radius: 8px;
-    background: #000000;
+    background: var(--bg);
 }
 
 .internet-icon {
     position: relative;
     width: min(34vw, 220px);
     aspect-ratio: 1;
-    border: 8px solid #ffffff;
+    border: 8px solid var(--text-heading);
     border-radius: 50%;
 }
 
@@ -244,7 +244,7 @@ button:hover,
 .internet-icon span::after {
     content: '';
     position: absolute;
-    background: #ffffff;
+    background: var(--text-heading);
 }
 
 .internet-icon::before {
@@ -266,7 +266,7 @@ button:hover,
 .internet-icon span::before,
 .internet-icon span::after {
     inset: 28px 16px;
-    border: 7px solid #ffffff;
+    border: 7px solid var(--text-heading);
     border-left: 0;
     border-right: 0;
     border-radius: 50%;
@@ -277,8 +277,8 @@ button:hover,
     inset: 16px 42px;
     border-top: 0;
     border-bottom: 0;
-    border-left: 7px solid #ffffff;
-    border-right: 7px solid #ffffff;
+    border-left: 7px solid var(--text-heading);
+    border-right: 7px solid var(--text-heading);
 }
 
 /* ─── Typography ─────────────────────────────────────────── */
@@ -622,7 +622,7 @@ h1 {
 .nv-logo {
     font-size: clamp(5rem, 20vw, 14rem);
     font-weight: 900;
-    color: #ffffff;
+    color: var(--text-heading);
     letter-spacing: -0.04em;
     line-height: 1;
     user-select: none;
