@@ -966,3 +966,41 @@ h1 {
     letter-spacing: 0.08em;
     word-break: break-all;
 }
+
+/* ─── Scrollbar ──────────────────────────────────────────── */
+::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #b0b8c4;
+    border-radius: 99px;
+    transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #8a949f;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.35);
+}
+
+.chat-list, .dm-messages {
+    scrollbar-width: thin;
+    scrollbar-color: #b0b8c4 transparent;
+}
+
+[data-theme="dark"] .chat-list,
+[data-theme="dark"] .dm-messages {
+    scrollbar-color: rgba(255,255,255,0.2) transparent;
+}
