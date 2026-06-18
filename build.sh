@@ -10,3 +10,4 @@ curl -fsSL "https://cdn.jsdelivr.net/npm/openpgp@5.11.2/dist/openpgp.min.js" -o 
 sed -i '/^\/\/# sourceMappingURL=/d' static/js/openpgp.min.js
 
 python manage.py collectstatic --noinput
+python manage.py migrate --noinput
