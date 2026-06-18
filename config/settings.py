@@ -86,6 +86,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'accounts.middleware.SecurityHeadersMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -188,3 +189,15 @@ if find_spec('whitenoise') and not DEBUG:
 
 LOGIN_REDIRECT_URL = 'profile'
 LOGOUT_REDIRECT_URL = 'home'
+
+# ─── Session / Cookie Security ─────────────────────────────
+SESSION_COOKIE_SECURE = True          # Only HTTPS
+SESSION_COOKIE_HTTPONLY = True        # No JS access
+SESSION_COOKIE_SAMESITE = 'Lax'       # CSRF protection
+CSRF_COOKIE_SECURE = True             # Only HTTPS
+CSRF_COOKIE_SAMESITE = 'Strict'       # Strict CSRF
+
+# ─── Security Middleware Settings ───────────────────────────
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_SSL_REDIRECT = not DEBUG       # Redirect HTTP to HTTPS in production

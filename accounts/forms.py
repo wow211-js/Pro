@@ -1,8 +1,26 @@
+import re
+
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 
 from .models import ChatMessage
+
+
+# XSS dangerous patterns (from API schema validation skill)
+XSS_DANGEROUS_PATTERNS = [
+    r'<script', r'javascript:', r'onerror=', r'onload=', r'onmouseover=',
+    r'onclick=', r'onfocus=', r'onblur=', r'ondblclick=', r'onchange=',
+    r'onsubmit=', r'onmouseenter=', r'onmouseleave=', r'onkeydown=',
+    r'onkeypress=', r'onkeyup=', r'oncontextmenu=', r'data:text/html',
+    r'data:application/javascript', r'eval\s*\(', r'expression\s*\(',
+]
+XSS_RE = re.compile('|'.join(XSS_DANGEROUS_PATTERNS), re.IGNORECASE)
+
+def validate_no_xss(text):
+    if XSS_RE.search(text):
+        raise ValidationError('Ввод содержит недопустимые символы (XSS-паттерн).')
 
 
 class SignUpForm(UserCreationForm):
@@ -53,6 +71,11 @@ class ChatMessageForm(forms.ModelForm):
         }
         labels = {'text': ''}
 
+    def clean_text(self):
+        text = self.cleaned_data.get('text', '')
+        validate_no_xss(text)
+        return text
+
 
 class GuestChatMessageForm(forms.ModelForm):
     guest_name = forms.CharField(
@@ -73,6 +96,16 @@ class GuestChatMessageForm(forms.ModelForm):
         }
         labels = {'text': ''}
 
+    def clean_text(self):
+        text = self.cleaned_data.get('text', '')
+        validate_no_xss(text)
+        return text
+
+    def clean_guest_name(self):
+        name = self.cleaned_data.get('guest_name', '')
+        validate_no_xss(name)
+        return name
+
 
 class DirectMessageForm(forms.Form):
     text = forms.CharField(
@@ -83,3 +116,8 @@ class DirectMessageForm(forms.Form):
             'placeholder': 'Написать сообщение...',
         })
     )
+
+    def clean_text(self):
+        text = self.cleaned_data.get('text', '')
+        validate_no_xss(text)
+        return text

@@ -14,6 +14,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .forms import ChatMessageForm, DirectMessageForm, ProfileEditForm, SignUpForm
+from .middleware import rate_limit, rate_limit_json
 from .models import ChatMessage, DirectMessage, UserProfile
 
 
@@ -55,6 +56,7 @@ def signup(request):
     return render(request, 'accounts/signup.html', {'form': form})
 
 
+@rate_limit('chat', max_requests=30, window=60)
 @login_required
 def profile(request):
     _auto_clear_chat()
@@ -91,6 +93,7 @@ def profile(request):
 
 @login_required
 @user_passes_test(lambda user: user.is_staff)
+@rate_limit('admin', max_requests=5, window=60)
 @require_POST
 def clear_chat(request):
     count, _ = ChatMessage.objects.all().delete()
@@ -147,6 +150,7 @@ def inbox(request):
     return render(request, 'accounts/inbox.html', {'conversations': conversations})
 
 
+@rate_limit('dm', max_requests=20, window=60)
 @login_required
 def conversation(request, username):
     try:
@@ -214,6 +218,7 @@ def new_conversation(request):
 
 
 @login_required
+@rate_limit('admin', max_requests=10, window=60)
 @require_POST
 def delete_conversation(request, username):
     """Delete all direct messages between current user and partner."""
@@ -235,6 +240,7 @@ def delete_conversation(request, username):
     return redirect('inbox')
 
 
+@rate_limit_json('keys', max_requests=10, window=300)
 @login_required
 def save_keys(request):
     """Save E2E keys for the user."""
@@ -252,6 +258,7 @@ def save_keys(request):
         return JsonResponse({'ok': False, 'error': str(e)}, status=400)
 
 
+@rate_limit_json('keys', max_requests=30, window=60)
 @login_required
 def get_public_key(request, username):
     """Get public key of a user. If requesting own keys, also return encrypted private key."""
@@ -266,6 +273,7 @@ def get_public_key(request, username):
         return JsonResponse({'error': 'not found'}, status=404)
 
 
+@rate_limit_json('poll', max_requests=60, window=60)
 @login_required
 def poll_messages(request, username):
     """Return new messages since a given message ID."""
@@ -360,6 +368,7 @@ def totp_setup(request):
     })
 
 
+@rate_limit('totp', max_requests=5, window=60)
 def totp_verify(request):
     """TOTP verification step after login."""
     if not request.session.get('totp_user_id'):
