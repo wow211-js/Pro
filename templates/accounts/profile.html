@@ -17,9 +17,7 @@
             </div>
             <div>
                 <dt>Шифрование (E2E)</dt>
-                <dd>
-                    <span id="key-status" style="cursor:pointer" title="Нажмите чтобы скачать резервную копию ключей">Проверка...</span>
-                </dd>
+                <dd id="key-status" style="cursor:pointer" title="Нажмите чтобы скачать резервную копию ключей">Проверка...</dd>
             </div>
             <div>
                 <dt>Дата регистрации</dt>
@@ -55,7 +53,7 @@
 
         <div class="chat-list" id="chat-list">
             {% for message in chat_messages %}
-                <article class="chat-message">
+                <article class="chat-message" data-id="{{ message.id }}">
                     <div class="chat-meta">
                         <strong>{{ message.display_name }}</strong>
                         <time datetime="{{ message.created_at|date:'c' }}">
@@ -123,5 +121,67 @@
         if(d.public_key) { el.textContent = '🔒 Ключи настроены'; el.style.color='var(--online-fg)'; }
         else { el.textContent = '⚠️ Ключи не созданы — откройте любой диалог'; el.style.color='#f59e0b'; }
     });
+</script>
+<script>
+(function () {
+    let lastMessageId = 0;
+    const list = document.getElementById('chat-list');
+    const msgs = document.querySelectorAll('.chat-message[data-id]');
+    if (msgs.length) {
+        lastMessageId = Math.max(...[...msgs].map(el => parseInt(el.dataset.id) || 0));
+    }
+
+    function appendMessage(msg) {
+        const article = document.createElement('article');
+        article.className = 'chat-message';
+        article.dataset.id = msg.id;
+
+        const meta = document.createElement('div');
+        meta.className = 'chat-meta';
+
+        const name = document.createElement('strong');
+        name.textContent = msg.display_name;
+
+        const time = document.createElement('time');
+        time.textContent = msg.created_at;
+
+        meta.appendChild(name);
+        meta.appendChild(time);
+
+        const p = document.createElement('p');
+        if (msg.text.includes('\n')) {
+            const lines = msg.text.split('\n');
+            lines.forEach((line, i) => {
+                if (i > 0) p.appendChild(document.createElement('br'));
+                p.appendChild(document.createTextNode(line));
+            });
+        } else {
+            p.textContent = msg.text;
+        }
+
+        article.appendChild(meta);
+        article.appendChild(p);
+        list.appendChild(article);
+        list.scrollTop = list.scrollHeight;
+    }
+
+    async function poll() {
+        try {
+            const resp = await fetch(`/api/chat/poll/?since=${lastMessageId}`);
+            const data = await resp.json();
+            if (!data.messages || !data.messages.length) return;
+
+            const empty = list.querySelector('.empty-chat');
+            if (empty) empty.remove();
+
+            for (const msg of data.messages) {
+                lastMessageId = Math.max(lastMessageId, msg.id);
+                appendMessage(msg);
+            }
+        } catch(e) {}
+    }
+
+    setInterval(poll, 3000);
+})();
 </script>
 {% endblock %}

@@ -101,6 +101,23 @@ def clear_chat(request):
     return redirect('profile')
 
 
+@rate_limit_json('chat', max_requests=60, window=60)
+@login_required
+def poll_chat(request):
+    """Return new public chat messages since a given ID."""
+    since_id = int(request.GET.get('since', 0))
+    msgs = ChatMessage.objects.filter(id__gt=since_id).select_related('user').order_by('created_at')
+    return JsonResponse({'messages': [
+        {
+            'id': m.id,
+            'text': m.text,
+            'display_name': m.display_name,
+            'created_at': m.created_at.strftime('%d.%m.%Y %H:%M'),
+        }
+        for m in msgs
+    ]})
+
+
 @login_required
 def inbox(request):
     """List of all conversations for current user — optimized with annotate."""
