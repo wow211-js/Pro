@@ -454,6 +454,7 @@ h1 {
     font: inherit;
     background: var(--bg-input);
     color: var(--text);
+    overflow: hidden;
 }
 
 /* ─── Devices table ──────────────────────────────────────── */
