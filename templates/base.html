@@ -76,5 +76,37 @@
             });
         })();
     </script>
+
+    <script>
+    // Auto-hide scrollbars after 1 second of inactivity
+    (function() {
+        let timers = new WeakMap();
+
+        function onScroll(el) {
+            el.classList.add('scrolling');
+            clearTimeout(timers.get(el));
+            timers.set(el, setTimeout(() => {
+                el.classList.remove('scrolling');
+            }, 1000));
+        }
+
+        function attachScrollListeners() {
+            document.querySelectorAll('.chat-list, .dm-messages').forEach(el => {
+                if (!el.dataset.scrollBound) {
+                    el.dataset.scrollBound = '1';
+                    el.addEventListener('scroll', () => onScroll(el), { passive: true });
+                }
+            });
+        }
+
+        // Attach on load
+        document.addEventListener('DOMContentLoaded', attachScrollListeners);
+
+        // Re-attach when new elements appear (e.g. after navigation)
+        const observer = new MutationObserver(attachScrollListeners);
+        observer.observe(document.body, { childList: true, subtree: true });
+    })();
+    </script>
+
 </body>
 </html>
