@@ -76,5 +76,17 @@
             });
         })();
     </script>
+    <script>
+        (function () {
+            function autoExpand(ta) {
+                ta.style.height = 'auto';
+                ta.style.height = ta.scrollHeight + 'px';
+            }
+            document.querySelectorAll('textarea').forEach(function (ta) {
+                ta.addEventListener('input', function () { autoExpand(this); });
+                autoExpand(ta);
+            });
+        })();
+    </script>
 </body>
 </html>

@@ -447,14 +447,18 @@ h1 {
 
 .chat-form textarea {
     width: 100%;
-    resize: vertical;
+    resize: none;
+    overflow-y: hidden;
     border: 1px solid var(--input-border);
     border-radius: 8px;
     padding: 12px 14px;
     font: inherit;
     background: var(--bg-input);
     color: var(--text);
-    overflow: hidden;
+}
+
+textarea::-webkit-resizer {
+    display: none;
 }
 
 /* ─── Devices table ──────────────────────────────────────── */
