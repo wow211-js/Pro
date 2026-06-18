@@ -192,15 +192,16 @@ def conversation(request, username):
     if partner == request.user:
         return redirect('inbox')
 
-    # Block check — prevent sending if blocked or blocking
+    # Block check
+    is_blocked_by_me = False
+    is_blocked_by_them = False
     try:
-        is_blocked = UserBlock.objects.filter(
-            models.Q(blocker=request.user, blocked=partner) |
-            models.Q(blocker=partner, blocked=request.user)
+        is_blocked_by_me = UserBlock.objects.filter(
+            blocker=request.user, blocked=partner
         ).exists()
-        if is_blocked:
-            messages.error(request, 'Диалог с этим пользователем заблокирован.')
-            return redirect('inbox')
+        is_blocked_by_them = UserBlock.objects.filter(
+            blocker=partner, blocked=request.user
+        ).exists()
     except Exception:
         pass  # Table may not exist yet
 
@@ -208,14 +209,17 @@ def conversation(request, username):
     DirectMessage.objects.filter(sender=partner, recipient=request.user, is_read=False).update(is_read=True)
 
     if request.method == 'POST':
-        form = DirectMessageForm(request.POST)
-        if form.is_valid():
-            DirectMessage.objects.create(
-                sender=request.user,
-                recipient=partner,
-                text=form.cleaned_data['text'],
-            )
-            return redirect('conversation', username=username)
+        if is_blocked_by_me or is_blocked_by_them:
+            messages.error(request, 'Отправка сообщений заблокирована.')
+        else:
+            form = DirectMessageForm(request.POST)
+            if form.is_valid():
+                DirectMessage.objects.create(
+                    sender=request.user,
+                    recipient=partner,
+                    text=form.cleaned_data['text'],
+                )
+                return redirect('conversation', username=username)
     else:
         form = DirectMessageForm()
 
@@ -228,7 +232,8 @@ def conversation(request, username):
         'partner': partner,
         'msgs': msgs,
         'form': form,
-        'is_blocked': is_blocked,
+        'is_blocked_by_me': is_blocked_by_me,
+        'is_blocked_by_them': is_blocked_by_them,
     })
 
 
