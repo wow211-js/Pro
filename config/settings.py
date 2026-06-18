@@ -87,6 +87,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'accounts.middleware.SecurityHeadersMiddleware',
+    'accounts.middleware.IPRateLimitMiddleware',
+    'accounts.middleware.BlockCheckMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -201,3 +203,7 @@ CSRF_COOKIE_SAMESITE = 'Strict'       # Strict CSRF
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_SSL_REDIRECT = not DEBUG       # Redirect HTTP to HTTPS in production
+
+# ─── Turnstile (Cloudflare CAPTCHA) ────────────────────────
+TURNSTILE_SITE_KEY = os.environ.get('TURNSTILE_SITE_KEY', '')
+TURNSTILE_SECRET_KEY = os.environ.get('TURNSTILE_SECRET_KEY', '')

@@ -10,7 +10,18 @@
         <div class="dm-avatar">{{ partner.username|first|upper }}</div>
         <strong>{{ partner.username }}</strong>
         <span id="e2e-status" class="e2e-badge e2e-loading" style="cursor:pointer" onclick="toggleFingerprints()" title="Нажмите для проверки ключей">🔒 …</span>
-        <form method="post" action="{% url 'delete_conversation' partner.username %}" onsubmit="return confirm('Удалить весь диалог?')" style="margin-left:auto">
+        {% if is_blocked %}
+        <form method="post" action="{% url 'unblock_user' partner.username %}" style="margin-left:auto">
+            {% csrf_token %}
+            <button type="submit" class="clear-btn" title="Разблокировать">🔓</button>
+        </form>
+        {% else %}
+        <form method="post" action="{% url 'block_user' partner.username %}" onsubmit="return confirm('Заблокировать пользователя? Вы не сможете отправлять и получать сообщения от него.')" style="margin-left:auto">
+            {% csrf_token %}
+            <button type="submit" class="clear-btn" title="Заблокировать">🚫</button>
+        </form>
+        {% endif %}
+        <form method="post" action="{% url 'delete_conversation' partner.username %}" onsubmit="return confirm('Удалить весь диалог?')">
             {% csrf_token %}
             <button type="submit" class="clear-btn" title="Удалить диалог">🗑</button>
         </form>

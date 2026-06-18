@@ -1,6 +1,11 @@
+import json
 import re
+import urllib.error
+import urllib.parse
+import urllib.request
 
 from django import forms
+from django.conf import settings
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -31,13 +36,41 @@ class SignUpForm(UserCreationForm):
         widget=forms.TextInput(attrs={'placeholder': 'Как вас видят другие'}),
         help_text='Необязательно. Если не указать — будет показан тег.',
     )
+    turnstile_token = forms.CharField(
+        widget=forms.HiddenInput(),
+        required=False,
+    )
 
     class Meta:
         model = User
-        fields = ('username', 'display_name', 'password1', 'password2')
+        fields = ('username', 'display_name', 'password1', 'password2', 'turnstile_token')
         labels = {
             'username': 'Тег / логин (@)',
         }
+
+    def clean_turnstile_token(self):
+        token = self.cleaned_data.get('turnstile_token', '')
+        secret = getattr(settings, 'TURNSTILE_SECRET_KEY', '')
+        # Skip validation if Turnstile not configured (dev mode)
+        if not secret:
+            return token
+        if not token:
+            raise ValidationError('Пожалуйста, пройдите проверку капчи.')
+        try:
+            data = urllib.parse.urlencode({'secret': secret, 'response': token}).encode()
+            req = urllib.request.Request(
+                'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+                data=data,
+                headers={'Content-Type': 'application/x-www-form-urlencoded'},
+                method='POST',
+            )
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                result = json.loads(resp.read().decode())
+            if not result.get('success'):
+                raise ValidationError('Проверка капчи не пройдена. Попробуйте ещё раз.')
+        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError):
+            raise ValidationError('Ошибка проверки капчи. Попробуйте позже.')
+        return token
 
     def save(self, commit=True):
         user = super().save(commit=commit)

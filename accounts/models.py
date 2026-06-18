@@ -6,6 +6,28 @@ from django.db import models
 from django.utils import timezone
 
 
+class UserBlock(models.Model):
+    blocker = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name='blocks_made',
+        on_delete=models.CASCADE,
+    )
+    blocked = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name='blocks_received',
+        on_delete=models.CASCADE,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('blocker', 'blocked')
+        verbose_name = 'блокировка'
+        verbose_name_plural = 'блокировки'
+
+    def __str__(self):
+        return f'{self.blocker.username} → {self.blocked.username}'
+
+
 class UserProfile(models.Model):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,

@@ -13,6 +13,8 @@ urlpatterns = [
     path('messages/', views.inbox, name='inbox'),
     path('messages/new/', views.new_conversation, name='new_conversation'),
     path('messages/<str:username>/delete/', views.delete_conversation, name='delete_conversation'),
+    path('messages/<str:username>/block/', views.block_user, name='block_user'),
+    path('messages/<str:username>/unblock/', views.unblock_user, name='unblock_user'),
     path('messages/<str:username>/', views.conversation, name='conversation'),
     # E2E key endpoints
     path('api/keys/save/', views.save_keys, name='save_keys'),

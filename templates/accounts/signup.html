@@ -5,9 +5,10 @@
 {% block content %}
 <section class="auth-panel">
     <h1>Создать аккаунт</h1>
-    <form method="post" class="auth-form">
+    <form method="post" class="auth-form" id="signup-form">
         {% csrf_token %}
         {% for field in form %}
+            {% if field.name != 'turnstile_token' %}
             <label>
                 <span>{{ field.label }}</span>
                 {{ field }}
@@ -18,12 +19,21 @@
                     <strong class="error">{{ error }}</strong>
                 {% endfor %}
             </label>
+            {% endif %}
         {% endfor %}
+        <input type="hidden" name="turnstile_token" id="turnstile-token" value="">
+        <div class="cf-turnstile" data-sitekey="{{ TURNSTILE_SITE_KEY }}" data-callback="onTurnstileSuccess"></div>
         {% for error in form.non_field_errors %}
             <strong class="error">{{ error }}</strong>
         {% endfor %}
         <button type="submit">Зарегистрироваться</button>
     </form>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <script>
+        function onTurnstileSuccess(token) {
+            document.getElementById('turnstile-token').value = token;
+        }
+    </script>
     <p class="muted">Уже есть аккаунт? <a href="{% url 'login' %}">Войти</a></p>
 </section>
 {% endblock %}

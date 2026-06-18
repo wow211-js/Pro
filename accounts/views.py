@@ -15,7 +15,7 @@ from django.views.decorators.http import require_POST
 
 from .forms import ChatMessageForm, DirectMessageForm, ProfileEditForm, SignUpForm
 from .middleware import rate_limit, rate_limit_json
-from .models import ChatMessage, DirectMessage, UserProfile
+from .models import ChatMessage, DirectMessage, UserProfile, UserBlock
 
 
 def _auto_clear_chat():
@@ -53,7 +53,10 @@ def signup(request):
             return redirect('profile')
     else:
         form = SignUpForm()
-    return render(request, 'accounts/signup.html', {'form': form})
+    return render(request, 'accounts/signup.html', {
+        'form': form,
+        'TURNSTILE_SITE_KEY': getattr(settings, 'TURNSTILE_SITE_KEY', ''),
+    })
 
 
 @rate_limit('chat', max_requests=30, window=60)
@@ -149,6 +152,13 @@ def inbox(request):
         ids.add(s if s != user.id else r)
     ids.discard(user.id)
 
+    # Exclude blocked users (both directions)
+    blocked_ids = set(UserBlock.objects.filter(
+        models.Q(blocker=user) | models.Q(blocked=user)
+    ).values_list('blocker', 'blocked'))
+    blocked_ids = {uid for pair in blocked_ids for uid in pair if uid != user.id}
+    ids -= blocked_ids
+
     partners = User.objects.filter(id__in=ids).annotate(
         last_msg_text=Subquery(latest_msg.values('text')),
         last_msg_time=Subquery(latest_msg.values('created_at')),
@@ -179,6 +189,15 @@ def conversation(request, username):
     if partner == request.user:
         return redirect('inbox')
 
+    # Block check — prevent sending if blocked or blocking
+    is_blocked = UserBlock.objects.filter(
+        models.Q(blocker=request.user, blocked=partner) |
+        models.Q(blocker=partner, blocked=request.user)
+    ).exists()
+    if is_blocked:
+        messages.error(request, 'Диалог с этим пользователем заблокирован.')
+        return redirect('inbox')
+
     # Mark incoming as read
     DirectMessage.objects.filter(sender=partner, recipient=request.user, is_read=False).update(is_read=True)
 
@@ -203,7 +222,41 @@ def conversation(request, username):
         'partner': partner,
         'msgs': msgs,
         'form': form,
+        'is_blocked': is_blocked,
     })
+
+
+@login_required
+@require_POST
+@rate_limit('block', max_requests=10, window=60)
+def block_user(request, username):
+    """Block a user."""
+    try:
+        blocked = User.objects.get(username=username)
+    except User.DoesNotExist:
+        messages.error(request, f'Пользователь "{username}" не найден.')
+        return redirect('inbox')
+    if blocked == request.user:
+        messages.error(request, 'Нельзя заблокировать себя.')
+        return redirect('inbox')
+    UserBlock.objects.get_or_create(blocker=request.user, blocked=blocked)
+    messages.success(request, f'Пользователь @{username} заблокирован.')
+    return redirect('conversation', username=username)
+
+
+@login_required
+@require_POST
+@rate_limit('block', max_requests=10, window=60)
+def unblock_user(request, username):
+    """Unblock a user."""
+    try:
+        blocked = User.objects.get(username=username)
+    except User.DoesNotExist:
+        messages.error(request, f'Пользователь "{username}" не найден.')
+        return redirect('inbox')
+    UserBlock.objects.filter(blocker=request.user, blocked=blocked).delete()
+    messages.success(request, f'Пользователь @{username} разблокирован.')
+    return redirect('conversation', username=username)
 
 
 @login_required
