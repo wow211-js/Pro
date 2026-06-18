@@ -77,6 +77,15 @@
         {% endfor %}
     </div>
 
+    {% if is_blocked_by_them %}
+        <div class="e2e-unlock-panel" style="text-align:center;color:var(--text-muted)">
+            🚫 Вы заблокированы этим пользователем
+        </div>
+    {% elif is_blocked_by_me %}
+        <div class="e2e-unlock-panel" style="text-align:center;color:var(--text-muted)">
+            🚫 Вы заблокировали этого пользователя — отправка недоступна
+        </div>
+    {% else %}
     <form id="dm-form" class="chat-form" onsubmit="sendEncrypted(event)">
         {% csrf_token %}
         <textarea id="msg-input" rows="2" placeholder="Написать сообщение..."
