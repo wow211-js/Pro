@@ -193,13 +193,16 @@ def conversation(request, username):
         return redirect('inbox')
 
     # Block check — prevent sending if blocked or blocking
-    is_blocked = UserBlock.objects.filter(
-        models.Q(blocker=request.user, blocked=partner) |
-        models.Q(blocker=partner, blocked=request.user)
-    ).exists()
-    if is_blocked:
-        messages.error(request, 'Диалог с этим пользователем заблокирован.')
-        return redirect('inbox')
+    try:
+        is_blocked = UserBlock.objects.filter(
+            models.Q(blocker=request.user, blocked=partner) |
+            models.Q(blocker=partner, blocked=request.user)
+        ).exists()
+        if is_blocked:
+            messages.error(request, 'Диалог с этим пользователем заблокирован.')
+            return redirect('inbox')
+    except Exception:
+        pass  # Table may not exist yet
 
     # Mark incoming as read
     DirectMessage.objects.filter(sender=partner, recipient=request.user, is_read=False).update(is_read=True)
