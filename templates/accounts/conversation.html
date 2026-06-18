@@ -45,6 +45,12 @@
         <p class="muted" style="margin-top:8px;font-size:0.85rem">
             <button onclick="autoGenerateKeys()" class="secondary" style="font-size:0.85rem">Забыли пароль? Сгенерировать новые ключи</button>
         </p>
+        <p class="muted" style="margin-top:8px;font-size:0.85rem">
+            <label style="cursor:pointer;text-decoration:underline">
+                <input type="file" id="key-import" style="display:none" onchange="uploadKeyBackup(this)" accept=".json">
+                📂 Загрузить резервную копию ключей
+            </label>
+        </p>
     </div>
 
     <div class="chat-list dm-messages" id="dm-list">
@@ -162,6 +168,51 @@ async function unlockE2E() {
         setStatus('🔒 E2E ✓', 'e2e-ok');
         await decryptAll(data.encrypted_private_key, passphrase);
         startPolling();
+    }
+}
+
+async function uploadKeyBackup(input) {
+    const file = input.files[0];
+    if (!file) return;
+    input.value = '';
+    
+    try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        
+        if (data.username !== MY_USERNAME) {
+            alert('Файл ключей для другого пользователя: ' + data.username);
+            return;
+        }
+        if (!data.encrypted_private_key || !data.public_key) {
+            alert('Неверный формат файла ключей');
+            return;
+        }
+        
+        const session = E2E.getSession();
+        let passphrase = session.passphrase;
+        
+        if (!passphrase) {
+            passphrase = prompt('Введите пароль (passphrase) для этих ключей:');
+            if (!passphrase) return;
+        }
+        
+        const valid = await E2E.verifyPassphrase(data.encrypted_private_key, passphrase);
+        if (!valid) {
+            alert('Неверный пароль. Попробуйте другой файл или пароль.');
+            return;
+        }
+        
+        const save = await E2E.saveKeys(data.public_key, data.encrypted_private_key);
+        if (!save.ok) throw new Error(save.error || 'Failed to save');
+        
+        E2E.storeSession(data.encrypted_private_key, passphrase);
+        myPublicKey = data.public_key;
+        
+        alert('Ключи восстановлены. Страница перезагрузится.');
+        location.reload();
+    } catch (e) {
+        alert('Ошибка импорта: ' + e.message);
     }
 }
 
