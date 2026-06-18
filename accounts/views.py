@@ -153,11 +153,14 @@ def inbox(request):
     ids.discard(user.id)
 
     # Exclude blocked users (both directions)
-    blocked_ids = set(UserBlock.objects.filter(
-        models.Q(blocker=user) | models.Q(blocked=user)
-    ).values_list('blocker', 'blocked'))
-    blocked_ids = {uid for pair in blocked_ids for uid in pair if uid != user.id}
-    ids -= blocked_ids
+    try:
+        blocked_ids = set(UserBlock.objects.filter(
+            models.Q(blocker=user) | models.Q(blocked=user)
+        ).values_list('blocker', 'blocked'))
+        blocked_ids = {uid for pair in blocked_ids for uid in pair if uid != user.id}
+        ids -= blocked_ids
+    except Exception:
+        pass  # Table may not exist yet
 
     partners = User.objects.filter(id__in=ids).annotate(
         last_msg_text=Subquery(latest_msg.values('text')),
