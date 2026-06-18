@@ -114,11 +114,16 @@ body {
     transition: background-color 0.5s ease-in-out, color 0.5s ease-in-out;
 }
 
-/* ─── Scrollbar minimal ─────────────────────────────────────── */
+/* ─── Scrollbar auto-hide with smooth theme transition ─────── */
 html, body, .chat-list, .dm-messages {
     scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    transition: scrollbar-color 0.5s ease-in-out;
+}
+html.scrolling, body.scrolling, .chat-list.scrolling, .dm-messages.scrolling {
     scrollbar-color: var(--border) transparent;
 }
+
 html::-webkit-scrollbar,
 body::-webkit-scrollbar,
 .chat-list::-webkit-scrollbar,
@@ -126,12 +131,22 @@ body::-webkit-scrollbar,
     width: 4px;
     background: transparent;
 }
+
 html::-webkit-scrollbar-thumb,
 body::-webkit-scrollbar-thumb,
 .chat-list::-webkit-scrollbar-thumb,
 .dm-messages::-webkit-scrollbar-thumb {
     background: var(--border);
     border-radius: 4px;
+    opacity: 0;
+    transition: background-color 0.5s ease-in-out, opacity 0.5s ease-in-out;
+}
+
+html.scrolling::-webkit-scrollbar-thumb,
+body.scrolling::-webkit-scrollbar-thumb,
+.chat-list.scrolling::-webkit-scrollbar-thumb,
+.dm-messages.scrolling::-webkit-scrollbar-thumb {
+    opacity: 1;
 }
 
 a {

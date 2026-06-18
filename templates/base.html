@@ -76,5 +76,23 @@
             });
         })();
     </script>
+    <script>
+        (function () {
+            function setupAutoHide(el) {
+                if (!el) return;
+                var timeout;
+                el.addEventListener('scroll', function () {
+                    el.classList.add('scrolling');
+                    clearTimeout(timeout);
+                    timeout = setTimeout(function () {
+                        el.classList.remove('scrolling');
+                    }, 3000);
+                });
+            }
+            document.addEventListener('DOMContentLoaded', function () {
+                document.querySelectorAll('.chat-list, .dm-messages').forEach(setupAutoHide);
+            });
+        })();
+    </script>
 </body>
 </html>
