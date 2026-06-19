@@ -7,8 +7,11 @@ pip install -r requirements.txt
 curl -fsSL "https://cdn.jsdelivr.net/npm/openpgp@5.11.2/dist/openpgp.min.js" -o static/js/openpgp.min.js
 
 # Remove source map reference to prevent whitenoise staticfiles error
-sed -i '/^\/\/ # sourceMappingURL=/d' static/js/openpgp.min.js
+# (any line containing sourceMappingURL, in any format)
+sed -i '/sourceMappingURL=/d' static/js/openpgp.min.js
+
+# Also create an empty .map file just in case (prevents MissingFileError)
+touch static/js/openpgp.min.js.map
 
 python manage.py migrate
 python manage.py collectstatic --noinput
-python manage.py migrate --noinput
