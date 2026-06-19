@@ -1018,6 +1018,19 @@ textarea::-webkit-resizer {
 }
 
 /* ─── Search panel ───────────────────────────────────────── */
+.reply-preview {
+    background: var(--bg-code);
+    border-left: 3px solid var(--accent);
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
 .dm-search-panel {
     background: var(--bg-card);
 }

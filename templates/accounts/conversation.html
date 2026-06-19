@@ -98,11 +98,13 @@
                 <p class="msg-text">{% if msg.is_deleted %}🗑 Сообщение удалено{% else %}🔒 Зашифровано{% endif %}</p>
                 <div class="msg-meta">
                     <time>{{ msg.created_at|date:'d.m H:i' }}{% if msg.is_edited %} (изм.){% endif %}</time>
-                    {% if msg.sender == user and not msg.is_deleted %}
+                {% if not msg.is_deleted %}
                     <span class="msg-actions">
                         <button onclick="replyTo({{ msg.id }})" class="msg-action-btn" title="Ответить">↩</button>
+                        {% if msg.sender == user %}
                         <button onclick="editMessage({{ msg.id }})" class="msg-action-btn" title="Редактировать">✎</button>
                         <button onclick="deleteMessage({{ msg.id }})" class="msg-action-btn" title="Удалить">🗑</button>
+                        {% endif %}
                     </span>
                     {% endif %}
                 </div>
@@ -420,14 +422,35 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 let replyToId = null;
+let replyPreviewEl = null;
 
 function replyTo(msgId) {
-    replyToId = msgId;
     const el = document.querySelector(`.dm-msg[data-id="${msgId}"]`);
-    const sender = el?.dataset.sender || 'собеседника';
-    const input = document.getElementById('msg-input');
-    input.placeholder = `↳ Ответ на @${sender}...`;
-    input.focus();
+    if (!el) return;
+    const textEl = el.querySelector('.msg-text');
+    const text = textEl ? textEl.textContent : 'Сообщение';
+    replyToId = msgId;
+    
+    // Remove old preview
+    if (replyPreviewEl) replyPreviewEl.remove();
+    
+    // Create reply preview above input
+    replyPreviewEl = document.createElement('div');
+    replyPreviewEl.className = 'reply-preview';
+    replyPreviewEl.innerHTML = `
+        <span>↳ Ответ: ${text.slice(0, 100)}${text.length > 100 ? '...' : ''}</span>
+        <button onclick="cancelReply()" style="background:none;border:none;cursor:pointer;margin-left:8px">✕</button>
+    `;
+    
+    const form = document.getElementById('dm-form');
+    form.parentNode.insertBefore(replyPreviewEl, form);
+    document.getElementById('msg-input').focus();
+}
+
+function cancelReply() {
+    replyToId = null;
+    if (replyPreviewEl) { replyPreviewEl.remove(); replyPreviewEl = null; }
+    document.getElementById('msg-input').placeholder = 'Написать сообщение...';
 }
 
 async function editMessage(msgId) {
@@ -447,7 +470,7 @@ async function editMessage(msgId) {
             'Content-Type': 'application/x-www-form-urlencoded',
             'X-CSRFToken': CSRF,
         },
-        body: `text=${encodeURIComponent(newText)}`,
+        body: 'text=' + encodeURIComponent(newText),
     });
     const data = await resp.json();
     if (data.ok) {
@@ -466,7 +489,10 @@ async function deleteMessage(msgId) {
     if (!confirm('Удалить сообщение?')) return;
     const resp = await fetch(`/messages/${PARTNER}/delete/${msgId}/`, {
         method: 'POST',
-        headers: { 'X-CSRFToken': CSRF },
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': CSRF,
+        },
     });
     const data = await resp.json();
     if (data.ok) {
