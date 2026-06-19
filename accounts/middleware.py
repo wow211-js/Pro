@@ -12,14 +12,13 @@ class SecurityHeadersMiddleware:
     def __call__(self, request):
         response = self.get_response(request)
 
-        # CSP: allow self + Cloudflare Turnstile
+        # CSP: allow self scripts, inline styles (for theme), Turnstile for captcha
         response['Content-Security-Policy'] = (
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; "  # inline JS + Turnstile
             "style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data:; "
             "connect-src 'self' https://challenges.cloudflare.com; "  # Turnstile verification
-            "frame-src https://challenges.cloudflare.com; "
             "frame-ancestors 'none'; "
             "base-uri 'self'; "
             "form-action 'self';"
@@ -35,7 +34,7 @@ class SecurityHeadersMiddleware:
         response['Permissions-Policy'] = (
             'camera=(), microphone=(), geolocation=(), '
             'accelerometer=(), gyroscope=(), magnetometer=(), '
-            'payment=(), usb=(), vr=()'
+            'payment=(), usb=()'
         )
 
         # Prevent MIME sniffing
@@ -169,24 +168,19 @@ class BlockCheckMiddleware:
     def __call__(self, request):
         # Only check for authenticated POST to conversation endpoints
         if request.user.is_authenticated and request.method == 'POST' and '/messages/' in request.path:
-            try:
-                from .models import UserBlock
-                from django.db import OperationalError
-                parts = request.path.strip('/').split('/')
-                # Path: messages/<username>/
-                if len(parts) >= 2 and parts[0] == 'messages':
-                    username = parts[1]
-                    if username and username != request.user.username:
-                        is_blocked = UserBlock.objects.filter(
-                            blocker__username=username, blocked=request.user
-                        ).exists()
-                        if is_blocked:
-                            return HttpResponseForbidden(
-                                'Пользователь ограничил возможность отправлять вам сообщения.',
-                                content_type='text/plain'
-                            )
-            except Exception:
-                # Table may not exist yet during migration
-                pass
+            from .models import UserBlock
+            parts = request.path.strip('/').split('/')
+            # Path: messages/<username>/
+            if len(parts) >= 2 and parts[0] == 'messages':
+                username = parts[1]
+                if username and username != request.user.username:
+                    is_blocked = UserBlock.objects.filter(
+                        blocker__username=username, blocked=request.user
+                    ).exists()
+                    if is_blocked:
+                        return HttpResponseForbidden(
+                            'Пользователь ограничил возможность отправлять вам сообщения.',
+                            content_type='text/plain'
+                        )
         
         return self.get_response(request)
