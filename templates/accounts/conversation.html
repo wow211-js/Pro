@@ -82,9 +82,7 @@
             🚫 Вы заблокированы этим пользователем — отправка недоступна
         </div>
     {% elif is_blocked_by_me %}
-        <div class="e2e-unlock-panel" style="text-align:center;color:var(--text-muted);margin-top:12px">
-            🚫 Вы заблокировали этого пользователя — <a href="{% url 'unblock_user' partner.username %}" onclick="return confirm('Разблокировать?')" style="color:var(--accent)">разблокировать</a>
-        </div>
+        {# Форма отправки скрыта, кнопка разблокировки в заголовке #}
     {% else %}
     <form id="dm-form" class="chat-form" onsubmit="sendEncrypted(event)">
         {% csrf_token %}
