@@ -78,13 +78,34 @@
         </div>
     </div>
 
+    <div class="dm-search-panel" style="padding:8px 12px;border-bottom:1px solid var(--border)">
+        <input type="text" id="search-input" placeholder="🔍 Поиск по сообщениям..." 
+            style="width:100%;padding:8px 12px;border:1px solid var(--input-border);border-radius:8px;background:var(--bg-input);color:var(--text);font:inherit"
+            oninput="searchMessages(this.value)">
+    </div>
+
     <div class="chat-list dm-messages" id="dm-list">
         {% for msg in msgs %}
-            <div class="dm-msg {% if msg.sender == user %}dm-msg-out{% else %}dm-msg-in{% endif %}"
+            <div class="dm-msg {% if msg.sender == user %}dm-msg-out{% else %}dm-msg-in{% endif %}{% if msg.is_deleted %} dm-msg-deleted{% endif %}"
                  data-cipher="{{ msg.text }}"
-                 data-id="{{ msg.id }}">
-                <p class="msg-text">🔒 Зашифровано</p>
-                <time>{{ msg.created_at|date:'d.m H:i' }}</time>
+                 data-id="{{ msg.id }}"
+                 data-sender="{{ msg.sender.username }}">
+                {% if msg.reply_to %}
+                <div class="msg-reply">
+                    <small>↳ Ответ на @{{ msg.reply_to.sender.username }}:</small>
+                </div>
+                {% endif %}
+                <p class="msg-text">{% if msg.is_deleted %}🗑 Сообщение удалено{% else %}🔒 Зашифровано{% endif %}</p>
+                <div class="msg-meta">
+                    <time>{{ msg.created_at|date:'d.m H:i' }}{% if msg.is_edited %} (изм.){% endif %}</time>
+                    {% if msg.sender == user and not msg.is_deleted %}
+                    <span class="msg-actions">
+                        <button onclick="replyTo({{ msg.id }})" class="msg-action-btn" title="Ответить">↩</button>
+                        <button onclick="editMessage({{ msg.id }})" class="msg-action-btn" title="Редактировать">✎</button>
+                        <button onclick="deleteMessage({{ msg.id }})" class="msg-action-btn" title="Удалить">🗑</button>
+                    </span>
+                    {% endif %}
+                </div>
             </div>
         {% empty %}
             <p class="empty-chat">Начните диалог!</p>
@@ -397,5 +418,124 @@ document.addEventListener('DOMContentLoaded', () => {
 
     init();
 });
+
+let replyToId = null;
+
+function replyTo(msgId) {
+    replyToId = msgId;
+    const el = document.querySelector(`.dm-msg[data-id="${msgId}"]`);
+    const sender = el?.dataset.sender || 'собеседника';
+    const input = document.getElementById('msg-input');
+    input.placeholder = `↳ Ответ на @${sender}...`;
+    input.focus();
+}
+
+async function editMessage(msgId) {
+    const el = document.querySelector(`.dm-msg[data-id="${msgId}"]`);
+    if (!el) return;
+    const cipher = el.dataset.cipher;
+    const session = E2E.getSession();
+    let current = cipher;
+    if (cipher.includes('BEGIN PGP') && session.passphrase && session.privateKey) {
+        current = await E2E.decrypt(cipher, session.privateKey, session.passphrase);
+    }
+    const newText = prompt('Редактировать сообщение:', current);
+    if (!newText || newText === current) return;
+    const resp = await fetch(`/messages/${PARTNER}/edit/${msgId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': CSRF,
+        },
+        body: `text=${encodeURIComponent(newText)}`,
+    });
+    const data = await resp.json();
+    if (data.ok) {
+        el.dataset.cipher = newText;
+        el.querySelector('.msg-text').textContent = newText;
+        const time = el.querySelector('time');
+        if (time && !time.textContent.includes('(изм.)')) {
+            time.textContent += ' (изм.)';
+        }
+    } else {
+        alert('Ошибка: ' + (data.error || 'Не удалось отредактировать'));
+    }
+}
+
+async function deleteMessage(msgId) {
+    if (!confirm('Удалить сообщение?')) return;
+    const resp = await fetch(`/messages/${PARTNER}/delete/${msgId}/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF },
+    });
+    const data = await resp.json();
+    if (data.ok) {
+        const el = document.querySelector(`.dm-msg[data-id="${msgId}"]`);
+        if (el) {
+            el.classList.add('dm-msg-deleted');
+            el.querySelector('.msg-text').textContent = '🗑 Сообщение удалено';
+            el.querySelector('.msg-actions')?.remove();
+        }
+    } else {
+        alert('Ошибка: ' + (data.error || 'Не удалось удалить'));
+    }
+}
+
+function searchMessages(query) {
+    const q = query.trim().toLowerCase();
+    const msgs = document.querySelectorAll('.dm-msg[data-id]');
+    for (const el of msgs) {
+        const text = el.querySelector('.msg-text')?.textContent?.toLowerCase() || '';
+        if (!q || text.includes(q)) {
+            el.style.display = '';
+        } else {
+            el.style.display = 'none';
+        }
+    }
+}
+
+// Update sendEncrypted to include reply_to
+const originalSendEncrypted = sendEncrypted;
+sendEncrypted = async function(e) {
+    e.preventDefault();
+    const text = document.getElementById('msg-input').value.trim();
+    if (!text) return;
+
+    const session = E2E.getSession();
+    if (!session.passphrase) {
+        document.getElementById('e2e-unlock').style.display = 'block';
+        return alert('Сначала разблокируйте шифрование');
+    }
+
+    const pKey = partnerPublicKey || await E2E.getPublicKey(PARTNER);
+    if (!pKey) return alert('У собеседника нет ключей. Пусть сначала откроет любой диалог.');
+
+    try {
+        const encrypted = await E2E.encrypt(text, pKey, myPublicKey);
+
+        const formData = new URLSearchParams();
+        formData.append('text', encrypted);
+        formData.append('csrfmiddlewaretoken', CSRF);
+        if (replyToId) {
+            formData.append('reply_to', replyToId);
+            replyToId = null;
+            document.getElementById('msg-input').placeholder = 'Написать сообщение...';
+        }
+
+        const resp = await fetch(window.location.pathname, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: formData.toString(),
+        });
+        if (resp.ok) {
+            document.getElementById('msg-input').value = '';
+            location.reload();
+        } else {
+            alert('Ошибка отправки');
+        }
+    } catch (err) {
+        alert('Ошибка шифрования: ' + err.message);
+    }
+};
 </script>
 {% endblock %}

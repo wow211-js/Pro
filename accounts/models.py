@@ -102,6 +102,19 @@ class DirectMessage(models.Model):
     text = models.TextField('Сообщение (зашифровано)')
     created_at = models.DateTimeField('Дата отправки', auto_now_add=True)
     is_read = models.BooleanField('Прочитано', default=False)
+    # Reply to another message (threading)
+    reply_to = models.ForeignKey(
+        'self',
+        verbose_name='Ответ на',
+        related_name='replies',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    # Soft delete + edit tracking
+    is_deleted = models.BooleanField('Удалено', default=False)
+    is_edited = models.BooleanField('Изменено', default=False)
+    edited_at = models.DateTimeField('Дата изменения', null=True, blank=True)
 
     class Meta:
         ordering = ['created_at']

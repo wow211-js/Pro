@@ -209,19 +209,43 @@ def conversation(request, username):
     if request.method == 'POST':
         form = DirectMessageForm(request.POST)
         if form.is_valid():
+            # Check block before sending
+            try:
+                if UserBlock.objects.filter(
+                    models.Q(blocker=request.user, blocked=partner) |
+                    models.Q(blocker=partner, blocked=request.user)
+                ).exists():
+                    messages.error(request, 'Отправка невозможна — диалог заблокирован.')
+                    return redirect('conversation', username=username)
+            except ProgrammingError:
+                pass
+            reply_to_id = request.POST.get('reply_to', '').strip()
+            reply_to = None
+            if reply_to_id:
+                try:
+                    reply_to = DirectMessage.objects.filter(
+                        id=reply_to_id
+                    ).filter(
+                        models.Q(sender=request.user, recipient=partner) |
+                        models.Q(sender=partner, recipient=request.user)
+                    ).first()
+                except DirectMessage.DoesNotExist:
+                    pass
             DirectMessage.objects.create(
                 sender=request.user,
                 recipient=partner,
                 text=form.cleaned_data['text'],
+                reply_to=reply_to,
             )
             return redirect('conversation', username=username)
     else:
         form = DirectMessageForm()
 
     msgs = DirectMessage.objects.filter(
-        Q(sender=request.user, recipient=partner) |
-        Q(sender=partner, recipient=request.user)
-    ).order_by('created_at')
+        (Q(sender=request.user, recipient=partner) |
+         Q(sender=partner, recipient=request.user)),
+        is_deleted=False,
+    ).select_related('reply_to__sender').order_by('created_at')
 
     return render(request, 'accounts/conversation.html', {
         'partner': partner,
@@ -230,6 +254,67 @@ def conversation(request, username):
         'is_blocked_by_me': is_blocked_by_me,
         'is_blocked_by_them': is_blocked_by_them,
     })
+
+
+@login_required
+@require_POST
+@rate_limit('dm', max_requests=10, window=60)
+def edit_message(request, message_id):
+    """Edit own message (soft edit with is_edited flag)."""
+    try:
+        msg = DirectMessage.objects.get(id=message_id, sender=request.user, is_deleted=False)
+    except DirectMessage.DoesNotExist:
+        return JsonResponse({'ok': False, 'error': 'Сообщение не найдено'}, status=404)
+    new_text = request.POST.get('text', '').strip()
+    if not new_text:
+        return JsonResponse({'ok': False, 'error': 'Пустое сообщение'}, status=400)
+    msg.text = new_text
+    msg.is_edited = True
+    msg.edited_at = timezone.now()
+    msg.save()
+    return JsonResponse({'ok': True, 'edited_at': msg.edited_at.strftime('%d.%m.%Y %H:%M')})
+
+
+@login_required
+@require_POST
+@rate_limit('dm', max_requests=10, window=60)
+def delete_message(request, message_id):
+    """Soft delete own message."""
+    try:
+        msg = DirectMessage.objects.get(id=message_id, sender=request.user, is_deleted=False)
+    except DirectMessage.DoesNotExist:
+        return JsonResponse({'ok': False, 'error': 'Сообщение не найдено'}, status=404)
+    msg.is_deleted = True
+    msg.save()
+    return JsonResponse({'ok': True})
+
+
+@login_required
+def search_messages(request, username):
+    """Search messages in a conversation (returns all, client-side decrypts)."""
+    try:
+        partner = User.objects.get(username=username)
+    except User.DoesNotExist:
+        return JsonResponse({'ok': False, 'error': 'Пользователь не найден'}, status=404)
+    query = request.GET.get('q', '').strip().lower()
+    if not query:
+        return JsonResponse({'ok': True, 'messages': []})
+    msgs = DirectMessage.objects.filter(
+        (Q(sender=request.user, recipient=partner) |
+         Q(sender=partner, recipient=request.user)),
+        is_deleted=False,
+    ).order_by('created_at')
+    return JsonResponse({'ok': True, 'messages': [
+        {
+            'id': m.id,
+            'text': m.text,
+            'sender': m.sender.username,
+            'created_at': m.created_at.strftime('%d.%m.%Y %H:%M'),
+            'is_edited': m.is_edited,
+            'reply_to': m.reply_to_id,
+        }
+        for m in msgs
+    ]})
 
 
 @login_required
@@ -364,7 +449,8 @@ def poll_messages(request, username):
         Q(sender=request.user, recipient=partner) |
         Q(sender=partner, recipient=request.user),
         id__gt=since_id,
-    ).order_by('created_at').values('id', 'text', 'created_at', 'sender__username')
+        is_deleted=False,
+    ).order_by('created_at').values('id', 'text', 'created_at', 'sender__username', 'is_edited', 'reply_to_id')
 
     # Mark incoming as read
     if msgs:
@@ -378,6 +464,8 @@ def poll_messages(request, username):
             'text': m['text'],
             'created_at': m['created_at'].strftime('%d.%m %H:%M'),
             'is_mine': m['sender__username'] == request.user.username,
+            'is_edited': m['is_edited'],
+            'reply_to': m['reply_to_id'],
         }
         for m in msgs
     ]})
