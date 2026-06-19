@@ -48,20 +48,34 @@
     </div>
 
     <div id="e2e-unlock" class="e2e-unlock-panel" style="display:none">
-        <p id="unlock-label">Введите пароль от аккаунта чтобы разблокировать шифрование:</p>
-        <div style="display:flex;gap:8px">
-            <input type="password" id="unlock-passphrase" placeholder="Пароль от аккаунта" class="e2e-input">
-            <button onclick="unlockE2E()" class="button-link" style="white-space:nowrap">Разблокировать</button>
+        <div id="e2e-unlock-new-device" style="display:none">
+            <p><strong>🔐 Новое устройство / браузер</strong></p>
+            <p class="muted" style="font-size:0.85rem">Ключи шифрования хранятся только в этом браузере. Для чтения сообщений нужно восстановить ключи или создать новые.</p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+                <label class="button-link" style="cursor:pointer">
+                    <input type="file" id="key-import-new" style="display:none" onchange="uploadKeyBackup(this)" accept=".json">
+                    📂 Загрузить резервную копию
+                </label>
+                <button onclick="autoGenerateKeys()" class="secondary">🔄 Сгенерировать новые ключи</button>
+            </div>
+            <p class="muted" style="margin-top:8px;font-size:0.75rem">⚠️ Новые ключи = старые сообщения останутся зашифрованными</p>
         </div>
-        <p class="muted" style="margin-top:8px;font-size:0.85rem">
-            <button onclick="autoGenerateKeys()" class="secondary" style="font-size:0.85rem">Забыли пароль? Сгенерировать новые ключи</button>
-        </p>
-        <p class="muted" style="margin-top:8px;font-size:0.85rem">
-            <label style="cursor:pointer;text-decoration:underline">
-                <input type="file" id="key-import" style="display:none" onchange="uploadKeyBackup(this)" accept=".json">
-                📂 Загрузить резервную копию ключей
-            </label>
-        </p>
+        <div id="e2e-unlock-passphrase" style="display:none">
+            <p id="unlock-label">Введите пароль от аккаунта чтобы разблокировать шифрование:</p>
+            <div style="display:flex;gap:8px">
+                <input type="password" id="unlock-passphrase" placeholder="Пароль от аккаунта" class="e2e-input">
+                <button onclick="unlockE2E()" class="button-link" style="white-space:nowrap">Разблокировать</button>
+            </div>
+            <p class="muted" style="margin-top:8px;font-size:0.85rem">
+                <button onclick="autoGenerateKeys()" class="secondary" style="font-size:0.85rem">Забыли пароль? Сгенерировать новые ключи</button>
+            </p>
+            <p class="muted" style="margin-top:8px;font-size:0.85rem">
+                <label style="cursor:pointer;text-decoration:underline">
+                    <input type="file" id="key-import" style="display:none" onchange="uploadKeyBackup(this)" accept=".json">
+                    📂 Загрузить резервную копию ключей
+                </label>
+            </p>
+        </div>
     </div>
 
     <div class="chat-list dm-messages" id="dm-list">
@@ -119,12 +133,22 @@ async function init() {
     await showFingerprints();
 
     if (session.passphrase && session.privateKey) {
-        await decryptAll(session.privateKey, session.passphrase);
-        setStatus('🔒 E2E ✓', 'e2e-ok');
-        startPolling();
-    } else {
+        const valid = await E2E.verifyPassphrase(session.privateKey, session.passphrase);
+        if (valid) {
+            await decryptAll(session.privateKey, session.passphrase);
+            setStatus('🔒 E2E ✓', 'e2e-ok');
+            startPolling();
+            return;
+        }
+        // Keys exist but passphrase wrong - show passphrase panel
+        document.getElementById('e2e-unlock-passphrase').style.display = 'block';
         document.getElementById('e2e-unlock').style.display = 'block';
-        setStatus('🔑 Заблокировано', 'e2e-warn');
+        setStatus('🔑 Пароль не подходит', 'e2e-warn');
+    } else {
+        // No keys in localStorage - new device
+        document.getElementById('e2e-unlock-new-device').style.display = 'block';
+        document.getElementById('e2e-unlock').style.display = 'block';
+        setStatus('🔐 Новое устройство', 'e2e-warn');
     }
 }
 
@@ -144,6 +168,8 @@ async function autoGenerateKeys() {
         await showFingerprints();
         
         document.getElementById('e2e-unlock').style.display = 'none';
+        document.getElementById('e2e-unlock-passphrase').style.display = 'none';
+        document.getElementById('e2e-unlock-new-device').style.display = 'none';
         setStatus('🔒 E2E ✓', 'e2e-ok');
         startPolling();
     } catch(e) {
@@ -183,9 +209,17 @@ async function unlockE2E() {
     if (!data.public_key) {
         await autoGenerateKeys();
     } else {
+        const valid = await E2E.verifyPassphrase(data.encrypted_private_key, passphrase);
+        if (!valid) {
+            setStatus('🔑 Неверный пароль', 'e2e-warn');
+            alert('Пароль не подходит к сохранённым ключам. Попробуйте загрузить резервную копию или создать новые ключи.');
+            return;
+        }
         myPublicKey = data.public_key;
         E2E.storeSession(data.encrypted_private_key, passphrase);
         document.getElementById('e2e-unlock').style.display = 'none';
+        document.getElementById('e2e-unlock-passphrase').style.display = 'none';
+        document.getElementById('e2e-unlock-new-device').style.display = 'none';
         setStatus('🔒 E2E ✓', 'e2e-ok');
         await decryptAll(data.encrypted_private_key, passphrase);
         startPolling();

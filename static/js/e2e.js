@@ -59,7 +59,11 @@ const E2E = (() => {
                 decryptionKeys: privateKey,
             });
             return data;
-        } catch { return '[не удалось расшифровать]'; }
+        } catch (e) {
+            // Log specific error for debugging
+            console.error('E2E decrypt failed:', e.message);
+            return '[не удалось расшифровать: ' + e.message.slice(0, 60) + ']';
+        }
     }
 
     async function verifyPassphrase(encryptedPrivateKey, passphrase) {
