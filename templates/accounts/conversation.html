@@ -10,7 +10,7 @@
         <div class="dm-avatar">{{ partner.username|first|upper }}</div>
         <strong>{{ partner.username }}</strong>
         <span id="e2e-status" class="e2e-badge e2e-loading" style="cursor:pointer" onclick="toggleFingerprints()" title="Нажмите для проверки ключей">🔒 …</span>
-        {% if is_blocked %}
+        {% if is_blocked_by_me %}
         <form method="post" action="{% url 'unblock_user' partner.username %}" style="margin-left:auto">
             {% csrf_token %}
             <button type="submit" class="clear-btn" title="Разблокировать">🔓</button>
@@ -78,12 +78,12 @@
     </div>
 
     {% if is_blocked_by_them %}
-        <div class="e2e-unlock-panel" style="text-align:center;color:var(--text-muted)">
-            🚫 Вы заблокированы этим пользователем
+        <div class="e2e-unlock-panel" style="text-align:center;color:var(--text-muted);margin-top:12px">
+            🚫 Вы заблокированы этим пользователем — отправка недоступна
         </div>
     {% elif is_blocked_by_me %}
-        <div class="e2e-unlock-panel" style="text-align:center;color:var(--text-muted)">
-            🚫 Вы заблокировали этого пользователя — отправка недоступна
+        <div class="e2e-unlock-panel" style="text-align:center;color:var(--text-muted);margin-top:12px">
+            🚫 Вы заблокировали этого пользователя — <a href="{% url 'unblock_user' partner.username %}" onclick="return confirm('Разблокировать?')" style="color:var(--accent)">разблокировать</a>
         </div>
     {% else %}
     <form id="dm-form" class="chat-form" onsubmit="sendEncrypted(event)">

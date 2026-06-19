@@ -194,20 +194,17 @@ def conversation(request, username):
     if partner == request.user:
         return redirect('inbox')
 
-    # Block check — prevent sending if blocked or blocking
+    # Block check — separate directions for UI
     try:
-        is_blocked = UserBlock.objects.filter(
-            models.Q(blocker=request.user, blocked=partner) |
-            models.Q(blocker=partner, blocked=request.user)
-        ).exists()
+        is_blocked_by_me = UserBlock.objects.filter(blocker=request.user, blocked=partner).exists()
+        is_blocked_by_them = UserBlock.objects.filter(blocker=partner, blocked=request.user).exists()
     except ProgrammingError:
-        is_blocked = False
-    if is_blocked:
-        messages.error(request, 'Диалог с этим пользователем заблокирован.')
-        return redirect('inbox')
+        is_blocked_by_me = False
+        is_blocked_by_them = False
 
-    # Mark incoming as read
-    DirectMessage.objects.filter(sender=partner, recipient=request.user, is_read=False).update(is_read=True)
+    # Mark incoming as read (only if not blocked by them)
+    if not is_blocked_by_them:
+        DirectMessage.objects.filter(sender=partner, recipient=request.user, is_read=False).update(is_read=True)
 
     if request.method == 'POST':
         form = DirectMessageForm(request.POST)
@@ -230,7 +227,8 @@ def conversation(request, username):
         'partner': partner,
         'msgs': msgs,
         'form': form,
-        'is_blocked': is_blocked,
+        'is_blocked_by_me': is_blocked_by_me,
+        'is_blocked_by_them': is_blocked_by_them,
     })
 
 
