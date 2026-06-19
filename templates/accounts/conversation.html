@@ -464,17 +464,31 @@ async function editMessage(msgId) {
     }
     const newText = prompt('Редактировать сообщение:', current);
     if (!newText || newText === current) return;
+
+    // Re-encrypt new text for both sender and recipient
+    const pKey = partnerPublicKey || await E2E.getPublicKey(PARTNER);
+    if (!pKey || !myPublicKey) {
+        return alert('Нет ключей для шифрования. Обновите страницу.');
+    }
+
+    let encrypted;
+    try {
+        encrypted = await E2E.encrypt(newText, pKey, myPublicKey);
+    } catch (err) {
+        return alert('Ошибка шифрования: ' + err.message);
+    }
+
     const resp = await fetch(`/messages/${PARTNER}/edit/${msgId}/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
             'X-CSRFToken': CSRF,
         },
-        body: 'text=' + encodeURIComponent(newText),
+        body: 'text=' + encodeURIComponent(encrypted),
     });
     const data = await resp.json();
     if (data.ok) {
-        el.dataset.cipher = newText;
+        el.dataset.cipher = encrypted;
         el.querySelector('.msg-text').textContent = newText;
         const time = el.querySelector('time');
         if (time && !time.textContent.includes('(изм.)')) {
