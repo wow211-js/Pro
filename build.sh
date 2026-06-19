@@ -13,5 +13,6 @@ sed -i '/sourceMappingURL=/d' static/js/openpgp.min.js
 # Also create an empty .map file just in case (prevents MissingFileError)
 touch static/js/openpgp.min.js.map
 
+python manage.py showmigrations
 python manage.py migrate
 python manage.py collectstatic --noinput

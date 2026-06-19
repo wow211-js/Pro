@@ -7,6 +7,7 @@ from django.contrib.auth import login, authenticate
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User
 from django.db import models
+from django.db.utils import ProgrammingError
 from django.db.models.functions import Coalesce
 from django.db.models import Q, Count, Max, OuterRef, Subquery
 from django.http import JsonResponse, HttpResponseNotAllowed
@@ -160,8 +161,8 @@ def inbox(request):
         ).values_list('blocker', 'blocked'))
         blocked_ids = {uid for pair in blocked_ids for uid in pair if uid != user.id}
         ids -= blocked_ids
-    except Exception:
-        pass  # Table may not exist yet
+    except ProgrammingError:
+        pass  # table may not exist yet
 
     partners = User.objects.filter(id__in=ids).annotate(
         last_msg_text=Subquery(latest_msg.values('text')),
@@ -193,34 +194,30 @@ def conversation(request, username):
     if partner == request.user:
         return redirect('inbox')
 
-    # Block check
-    is_blocked_by_me = False
-    is_blocked_by_them = False
+    # Block check — prevent sending if blocked or blocking
     try:
-        is_blocked_by_me = UserBlock.objects.filter(
-            blocker=request.user, blocked=partner
+        is_blocked = UserBlock.objects.filter(
+            models.Q(blocker=request.user, blocked=partner) |
+            models.Q(blocker=partner, blocked=request.user)
         ).exists()
-        is_blocked_by_them = UserBlock.objects.filter(
-            blocker=partner, blocked=request.user
-        ).exists()
-    except Exception:
-        pass  # Table may not exist yet
+    except ProgrammingError:
+        is_blocked = False
+    if is_blocked:
+        messages.error(request, 'Диалог с этим пользователем заблокирован.')
+        return redirect('inbox')
 
     # Mark incoming as read
     DirectMessage.objects.filter(sender=partner, recipient=request.user, is_read=False).update(is_read=True)
 
     if request.method == 'POST':
-        if is_blocked_by_me or is_blocked_by_them:
-            messages.error(request, 'Отправка сообщений заблокирована.')
-        else:
-            form = DirectMessageForm(request.POST)
-            if form.is_valid():
-                DirectMessage.objects.create(
-                    sender=request.user,
-                    recipient=partner,
-                    text=form.cleaned_data['text'],
-                )
-                return redirect('conversation', username=username)
+        form = DirectMessageForm(request.POST)
+        if form.is_valid():
+            DirectMessage.objects.create(
+                sender=request.user,
+                recipient=partner,
+                text=form.cleaned_data['text'],
+            )
+            return redirect('conversation', username=username)
     else:
         form = DirectMessageForm()
 
@@ -233,8 +230,7 @@ def conversation(request, username):
         'partner': partner,
         'msgs': msgs,
         'form': form,
-        'is_blocked_by_me': is_blocked_by_me,
-        'is_blocked_by_them': is_blocked_by_them,
+        'is_blocked': is_blocked,
     })
 
 
