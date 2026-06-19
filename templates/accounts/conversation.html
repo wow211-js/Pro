@@ -484,9 +484,11 @@ async function editMessage(msgId) {
             'Content-Type': 'application/x-www-form-urlencoded',
             'X-CSRFToken': CSRF,
         },
+        credentials: 'same-origin',
         body: 'text=' + encodeURIComponent(encrypted),
     });
     const data = await resp.json();
+    console.log('editMessage response:', resp.status, data);
     if (data.ok) {
         el.dataset.cipher = encrypted;
         el.querySelector('.msg-text').textContent = newText;
@@ -507,6 +509,7 @@ async function deleteMessage(msgId) {
             'Content-Type': 'application/x-www-form-urlencoded',
             'X-CSRFToken': CSRF,
         },
+        credentials: 'same-origin',
     });
     const data = await resp.json();
     if (data.ok) {
