@@ -116,9 +116,11 @@ async function init() {
             setStatus('🔒 E2E ✓', 'e2e-ok');
             startPolling();
         } else {
-            // Stored keys don't match current messages
+            // Keys in localStorage don't work for current messages - clear them
+            localStorage.removeItem('e2e_passphrase');
+            localStorage.removeItem('e2e_private_key');
             document.getElementById('e2e-unlock').style.display = 'block';
-            setStatus('🔑 Пароль не подходит', 'e2e-warn');
+            setStatus('🔑 Ключи устарели', 'e2e-warn');
         }
     } else {
         document.getElementById('e2e-unlock').style.display = 'block';
@@ -164,17 +166,30 @@ async function unlockE2E() {
         myPublicKey = data.public_key;
         E2E.storeSession(data.encrypted_private_key, passphrase);
         
-        // Try decrypting before showing green status
-        const { success, fail } = await decryptAll(data.encrypted_private_key, passphrase);
+        // Try decrypting with server key first
+        let { success, fail } = await decryptAll(data.encrypted_private_key, passphrase);
         if (success > 0 || fail === 0) {
             document.getElementById('e2e-unlock').style.display = 'none';
             setStatus('🔒 E2E ✓', 'e2e-ok');
             startPolling();
-        } else {
-            // Decryption failed - wrong key or wrong passphrase
-            setStatus('🔑 Неверный пароль', 'e2e-warn');
-            alert('Пароль не подходит к текущим ключам. Возможно, ключи были перегенерированы. Старые сообщения не расшифровать. Нажмите F12 → Console для подробностей.');
+            return;
         }
+        
+        // Server key failed - try localStorage key as fallback
+        const session = E2E.getSession();
+        if (session.privateKey && session.privateKey !== data.encrypted_private_key) {
+            ({ success, fail } = await decryptAll(session.privateKey, session.passphrase));
+            if (success > 0) {
+                // localStorage key works! Use it instead.
+                setStatus('🔒 E2E ✓ (локальные ключи)', 'e2e-ok');
+                startPolling();
+                return;
+            }
+        }
+        
+        // Both keys failed
+        setStatus('🔑 Неверный пароль', 'e2e-warn');
+        alert('Пароль не подходит к текущим ключам на сервере.\n\nВозможные причины:\n1. Ключи были перегенерированы на другом устройстве\n2. Вы вводите пароль от Django аккаунта, а не от E2E ключей\n\nРешение: загрузите резервную копию ключей с устройства, где всё работает (например, телефона).');
     }
 }
 
