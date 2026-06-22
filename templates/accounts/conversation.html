@@ -215,7 +215,7 @@ async function pollNewMessages() {
                 <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
                     <time>${msg.created_at}</time>
                     <span style="display:flex;gap:4px">
-                        <button onclick="replyTo(${msg.id},'${(msg.sender||'').replace(/'/g,\'')}')" class="msg-action-btn" title="Ответить">↩</button>
+                        <button onclick="replyTo(${msg.id},&quot;${(msg.sender||'').replace(/\"/g,'\\&quot;')}&quot;)" class="msg-action-btn" title="Ответить">↩</button>
                         ${editDeleteBtns}
                     </span>
                 </div>`;

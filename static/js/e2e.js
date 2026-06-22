@@ -61,14 +61,14 @@ const E2E = {
     },
 
     storeSession(encryptedPrivateKey, passphrase) {
-        sessionStorage.setItem('e2e_passphrase', passphrase);
-        sessionStorage.setItem('e2e_private_key', encryptedPrivateKey);
+        localStorage.setItem('e2e_passphrase', passphrase);
+        localStorage.setItem('e2e_private_key', encryptedPrivateKey);
     },
 
     getSession() {
         return {
-            passphrase: sessionStorage.getItem('e2e_passphrase'),
-            privateKey: sessionStorage.getItem('e2e_private_key'),
+            passphrase: localStorage.getItem('e2e_passphrase'),
+            privateKey: localStorage.getItem('e2e_private_key'),
         };
     },
 };
