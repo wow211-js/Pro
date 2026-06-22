@@ -16,7 +16,7 @@ const E2E = {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '',
+                'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '',
             },
             body: JSON.stringify({ public_key: publicKey, encrypted_private_key: privateKey }),
         });
