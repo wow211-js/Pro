@@ -93,7 +93,7 @@
 <script>
 const PARTNER = "{{ partner.username }}";
 const MY_USERNAME = "{{ user.username }}";
-const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+const CSRF = (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '';
 let myPublicKey = null;
 let partnerPublicKey = null;
 let lastMessageId = 0;
