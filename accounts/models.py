@@ -102,6 +102,8 @@ class DirectMessage(models.Model):
     text = models.TextField('Сообщение (зашифровано)')
     created_at = models.DateTimeField('Дата отправки', auto_now_add=True)
     is_read = models.BooleanField('Прочитано', default=False)
+    is_deleted = models.BooleanField('Удалено', default=False)
+    is_edited = models.BooleanField('Изменено', default=False)
     # Reply to another message (threading)
     reply_to = models.ForeignKey(
         'self',
