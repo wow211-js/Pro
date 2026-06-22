@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 {% block title %}{{ partner.username }}{% endblock %}
 {% block content %}
 <section class="wide-panel dm-panel">
@@ -83,7 +84,6 @@
 </section>
 
 <script src="{% static 'js/openpgp.min.js' %}"></script>
-{% load static %}
 <script src="{% static 'js/e2e.js' %}"></script>
 <script>
 const PARTNER = "{{ partner.username }}";
