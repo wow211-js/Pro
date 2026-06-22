@@ -259,7 +259,7 @@ def conversation(request, username):
 @login_required
 @require_POST
 @rate_limit('dm', max_requests=10, window=60)
-def edit_message(request, message_id):
+def edit_message(request, message_id, username=None):
     """Edit own message (soft edit with is_edited flag)."""
     try:
         msg = DirectMessage.objects.get(id=message_id, sender=request.user, is_deleted=False)
@@ -278,7 +278,7 @@ def edit_message(request, message_id):
 @login_required
 @require_POST
 @rate_limit('dm', max_requests=10, window=60)
-def delete_message(request, message_id):
+def delete_message(request, message_id, username=None):
     """Soft delete own message."""
     try:
         msg = DirectMessage.objects.get(id=message_id, sender=request.user, is_deleted=False)
