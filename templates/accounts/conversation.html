@@ -453,7 +453,7 @@ function cancelReply() {
     document.getElementById('msg-input').placeholder = 'Написать сообщение...';
 }
 
-async function editMessage(msgId) {
+async async function editMessage(msgId) {
     const el = document.querySelector(`.dm-msg[data-id="${msgId}"]`);
     if (!el) return;
     const cipher = el.dataset.cipher;
@@ -501,7 +501,7 @@ async function editMessage(msgId) {
     }
 }
 
-async function deleteMessage(msgId) {
+async async function deleteMessage(msgId) {
     if (!confirm('Удалить сообщение?')) return;
     const resp = await fetch(`/messages/${PARTNER}/delete/${msgId}/`, {
         method: 'POST',
