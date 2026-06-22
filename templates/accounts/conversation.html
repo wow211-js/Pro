@@ -12,17 +12,17 @@
             {% if is_blocked_by_me %}
                 <form method="post" action="{% url 'unblock_user' partner.username %}">
                     {% csrf_token %}
-                    <button type="submit" class="secondary" style="font-size:0.85rem;padding:6px 12px">🔓 Разблокировать</button>
+                    <button type="submit" class="icon-btn" title="Разблокировать">🔓</button>
                 </form>
             {% else %}
                 <form method="post" action="{% url 'block_user' partner.username %}" onsubmit="return confirm('Заблокировать @{{ partner.username }}?')">
                     {% csrf_token %}
-                    <button type="submit" class="secondary" style="font-size:0.85rem;padding:6px 12px">🚫 Заблокировать</button>
+                    <button type="submit" class="icon-btn" title="Заблокировать">🚫</button>
                 </form>
             {% endif %}
             <form method="post" action="{% url 'delete_conversation' partner.username %}" onsubmit="return confirm('Удалить весь диалог?')">
                 {% csrf_token %}
-                <button type="submit" class="clear-btn" title="Удалить диалог">🗑</button>
+                <button type="submit" class="icon-btn" title="Удалить диалог">🗑</button>
             </form>
         </div>
     </div>
