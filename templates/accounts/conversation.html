@@ -111,9 +111,15 @@ async function init() {
 
     const session = E2E.getSession();
     if (session.passphrase && session.privateKey) {
-        await decryptAll(session.privateKey, session.passphrase);
-        setStatus('🔒 E2E ✓', 'e2e-ok');
-        startPolling();
+        const { success, fail } = await decryptAll(session.privateKey, session.passphrase);
+        if (success > 0 || fail === 0) {
+            setStatus('🔒 E2E ✓', 'e2e-ok');
+            startPolling();
+        } else {
+            // Stored keys don't match current messages
+            document.getElementById('e2e-unlock').style.display = 'block';
+            setStatus('🔑 Пароль не подходит', 'e2e-warn');
+        }
     } else {
         document.getElementById('e2e-unlock').style.display = 'block';
         setStatus('🔑 Заблокировано', 'e2e-warn');
@@ -157,21 +163,37 @@ async function unlockE2E() {
     } else {
         myPublicKey = data.public_key;
         E2E.storeSession(data.encrypted_private_key, passphrase);
-        document.getElementById('e2e-unlock').style.display = 'none';
-        setStatus('🔒 E2E ✓', 'e2e-ok');
-        await decryptAll(data.encrypted_private_key, passphrase);
-        startPolling();
+        
+        // Try decrypting before showing green status
+        const { success, fail } = await decryptAll(data.encrypted_private_key, passphrase);
+        if (success > 0 || fail === 0) {
+            document.getElementById('e2e-unlock').style.display = 'none';
+            setStatus('🔒 E2E ✓', 'e2e-ok');
+            startPolling();
+        } else {
+            // Decryption failed - wrong key or wrong passphrase
+            setStatus('🔑 Неверный пароль', 'e2e-warn');
+            alert('Пароль не подходит к текущим ключам. Возможно, ключи были перегенерированы. Старые сообщения не расшифровать. Нажмите F12 → Console для подробностей.');
+        }
     }
 }
 
 async function decryptAll(encPrivKey, passphrase) {
     const msgs = document.querySelectorAll('.dm-msg[data-cipher]');
+    let success = 0, fail = 0;
     for (const el of msgs) {
         const cipher = el.dataset.cipher;
         if (!cipher || !cipher.includes('BEGIN PGP')) continue;
         const plain = await E2E.decrypt(cipher, encPrivKey, passphrase);
-        el.querySelector('.msg-text').textContent = plain;
+        if (plain === '[не удалось расшифровать]') {
+            fail++;
+        } else {
+            success++;
+            el.querySelector('.msg-text').textContent = plain;
+        }
     }
+    console.log('decryptAll: success=' + success + ', fail=' + fail + ', total=' + msgs.length);
+    return { success, fail };
 }
 
 function startPolling() {

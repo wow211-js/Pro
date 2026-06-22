@@ -57,7 +57,10 @@ const E2E = {
             const message = await openpgp.readMessage({ armoredMessage: ciphertext });
             const { data } = await openpgp.decrypt({ message, decryptionKeys: privateKey });
             return data;
-        } catch(e) { return '[не удалось расшифровать]'; }
+        } catch(e) {
+            console.error('E2E.decrypt failed:', e.message);
+            return '[не удалось расшифровать]';
+        }
     },
 
     storeSession(encryptedPrivateKey, passphrase) {
