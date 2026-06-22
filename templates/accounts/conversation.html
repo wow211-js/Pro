@@ -1,8 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
-
 {% block title %}{{ partner.username }}{% endblock %}
-
 {% block content %}
 <section class="wide-panel dm-panel">
     <div class="dm-conv-header">
@@ -10,118 +7,71 @@
         <div class="dm-avatar">{{ partner.username|first|upper }}</div>
         <strong>{{ partner.username }}</strong>
         <span id="e2e-status" class="e2e-badge e2e-loading" style="cursor:pointer" onclick="toggleFingerprints()" title="Нажмите для проверки ключей">🔒 …</span>
-        {% if is_blocked_by_me %}
-        <form method="post" action="{% url 'unblock_user' partner.username %}" style="margin-left:auto">
-            {% csrf_token %}
-            <button type="submit" class="clear-btn" title="Разблокировать">🔓</button>
-        </form>
-        {% else %}
-        <form method="post" action="{% url 'block_user' partner.username %}" onsubmit="return confirm('Заблокировать пользователя? Вы не сможете отправлять и получать сообщения от него.')" style="margin-left:auto">
-            {% csrf_token %}
-            <button type="submit" class="clear-btn" title="Заблокировать">🚫</button>
-        </form>
-        {% endif %}
-        <form method="post" action="{% url 'delete_conversation' partner.username %}" onsubmit="return confirm('Удалить весь диалог?')">
-            {% csrf_token %}
-            <button type="submit" class="clear-btn" title="Удалить диалог">🗑</button>
-        </form>
+        <div style="margin-left:auto;display:flex;gap:8px">
+            {% if is_blocked_by_me %}
+                <form method="post" action="{% url 'unblock_user' partner.username %}">
+                    {% csrf_token %}
+                    <button type="submit" class="secondary" style="font-size:0.85rem;padding:6px 12px">🔓 Разблокировать</button>
+                </form>
+            {% else %}
+                <form method="post" action="{% url 'block_user' partner.username %}" onsubmit="return confirm('Заблокировать @{{ partner.username }}?')">
+                    {% csrf_token %}
+                    <button type="submit" class="secondary" style="font-size:0.85rem;padding:6px 12px">🚫 Заблокировать</button>
+                </form>
+            {% endif %}
+            <form method="post" action="{% url 'delete_conversation' partner.username %}" onsubmit="return confirm('Удалить весь диалог?')">
+                {% csrf_token %}
+                <button type="submit" class="clear-btn" title="Удалить диалог">🗑</button>
+            </form>
+        </div>
     </div>
 
-    {# Fingerprint verification panel #}
+    {# Fingerprint panel #}
     <div id="fp-panel" class="e2e-unlock-panel" style="display:none">
-        <p><strong>🔍 Проверка ключей</strong> — сравните отпечатки через другой канал (звонок, личная встреча)</p>
+        <p><strong>🔍 Проверка ключей</strong> — сравните отпечатки через другой канал</p>
         <div style="display:grid;gap:10px;margin-top:12px">
-            <div>
-                <div class="fp-label">Ваш отпечаток (@{{ user.username }}):</div>
-                <code id="my-fp" class="fp-code">вычисление...</code>
-            </div>
-            <div>
-                <div class="fp-label">Отпечаток @{{ partner.username }}:</div>
-                <code id="partner-fp" class="fp-code">вычисление...</code>
-            </div>
+            <div><div class="fp-label">Ваш отпечаток (@{{ user.username }}):</div><code id="my-fp" class="fp-code">вычисление...</code></div>
+            <div><div class="fp-label">Отпечаток @{{ partner.username }}:</div><code id="partner-fp" class="fp-code">вычисление...</code></div>
         </div>
-        <p class="muted" style="margin-top:12px;font-size:0.85rem">
-            ✅ Если отпечатки совпадают с тем, что видит собеседник — переписка защищена.<br>
-            ❌ Если не совпадают — возможна атака посредника (MITM).
-        </p>
+        <p class="muted" style="margin-top:12px;font-size:0.85rem">✅ Совпадают — переписка защищена. ❌ Не совпадают — возможна атака MITM.</p>
         <button onclick="toggleFingerprints()" class="secondary" style="margin-top:8px">Закрыть</button>
     </div>
 
+    {# Unlock panel #}
     <div id="e2e-unlock" class="e2e-unlock-panel" style="display:none">
-        <div id="e2e-unlock-new-device" style="display:none">
-            <p><strong>🔐 Новое устройство / браузер</strong></p>
-            <p class="muted" style="font-size:0.85rem">Ключи шифрования хранятся только в этом браузере. Для чтения сообщений нужно восстановить ключи или создать новые.</p>
-            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
-                <label class="button-link" style="cursor:pointer">
-                    <input type="file" id="key-import-new" style="display:none" onchange="uploadKeyBackup(this)" accept=".json">
-                    📂 Загрузить резервную копию
-                </label>
-                <button onclick="autoGenerateKeys()" class="secondary">🔄 Сгенерировать новые ключи</button>
-            </div>
-            <p class="muted" style="margin-top:8px;font-size:0.75rem">⚠️ Новые ключи = старые сообщения останутся зашифрованными</p>
+        <p id="unlock-label">Введите пароль от аккаунта чтобы разблокировать шифрование:</p>
+        <div style="display:flex;gap:8px">
+            <input type="password" id="unlock-passphrase" placeholder="Пароль от аккаунта" class="e2e-input">
+            <button onclick="unlockE2E()" class="button-link" style="white-space:nowrap">Разблокировать</button>
         </div>
-        <div id="e2e-unlock-passphrase" style="display:none">
-            <p id="unlock-label">Введите пароль от аккаунта чтобы разблокировать шифрование:</p>
-            <div style="display:flex;gap:8px">
-                <input type="password" id="unlock-passphrase" placeholder="Пароль от аккаунта" class="e2e-input">
-                <button onclick="unlockE2E()" class="button-link" style="white-space:nowrap">Разблокировать</button>
-            </div>
-            <p class="muted" style="margin-top:8px;font-size:0.85rem">
-                <button onclick="autoGenerateKeys()" class="secondary" style="font-size:0.85rem">Забыли пароль? Сгенерировать новые ключи</button>
-            </p>
-            <p class="muted" style="margin-top:8px;font-size:0.85rem">
-                <label style="cursor:pointer;text-decoration:underline">
-                    <input type="file" id="key-import" style="display:none" onchange="uploadKeyBackup(this)" accept=".json">
-                    📂 Загрузить резервную копию ключей
-                </label>
-            </p>
-        </div>
-    </div>
-
-    <div class="dm-search-panel" style="padding:8px 12px;border-bottom:1px solid var(--border)">
-        <input type="text" id="search-input" placeholder="🔍 Поиск по сообщениям..." 
-            style="width:100%;padding:8px 12px;border:1px solid var(--input-border);border-radius:8px;background:var(--bg-input);color:var(--text);font:inherit"
-            oninput="searchMessages(this.value)">
     </div>
 
     <div class="chat-list dm-messages" id="dm-list">
         {% for msg in msgs %}
-            <div class="dm-msg {% if msg.sender == user %}dm-msg-out{% else %}dm-msg-in{% endif %}{% if msg.is_deleted %} dm-msg-deleted{% endif %}"
-                 data-cipher="{{ msg.text }}"
-                 data-id="{{ msg.id }}"
-                 data-sender="{{ msg.sender.username }}">
-                {% if msg.reply_to %}
-                <div class="msg-reply">
-                    <small>↳ Ответ на @{{ msg.reply_to.sender.username }}:</small>
-                </div>
-                {% endif %}
-                <p class="msg-text">{% if msg.is_deleted %}🗑 Сообщение удалено{% else %}🔒 Зашифровано{% endif %}</p>
-                <div class="msg-meta">
+            {% if not msg.is_deleted %}
+            <div class="dm-msg {% if msg.sender == user %}dm-msg-out{% else %}dm-msg-in{% endif %}"
+                 data-cipher="{{ msg.text }}" data-id="{{ msg.id }}">
+                <p class="msg-text">🔒 Зашифровано</p>
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
                     <time>{{ msg.created_at|date:'d.m H:i' }}{% if msg.is_edited %} (изм.){% endif %}</time>
-                {% if not msg.is_deleted %}
-                    <span class="msg-actions">
-                        <button onclick="replyTo({{ msg.id }})" class="msg-action-btn" title="Ответить">↩</button>
-                        {% if msg.sender == user %}
+                    {% if msg.sender == user %}
+                    <span style="display:flex;gap:4px">
                         <button onclick="editMessage({{ msg.id }})" class="msg-action-btn" title="Редактировать">✎</button>
-                        <button onclick="deleteMessage({{ msg.id }})" class="msg-action-btn" title="Удалить">🗑</button>
-                        {% endif %}
+                        <button onclick="deleteMessage({{ msg.id }})" class="msg-action-btn" title="Удалить">✕</button>
                     </span>
                     {% endif %}
                 </div>
             </div>
+            {% endif %}
         {% empty %}
             <p class="empty-chat">Начните диалог!</p>
         {% endfor %}
     </div>
 
     {% if is_blocked_by_them %}
-        <div class="e2e-unlock-panel" style="text-align:center;color:var(--text-muted);margin-top:12px">
-            🚫 Вы заблокированы этим пользователем — отправка недоступна
-        </div>
+        <div class="e2e-unlock-panel" style="text-align:center;color:var(--text-muted)">🚫 Вы заблокированы этим пользователем</div>
     {% elif is_blocked_by_me %}
-        <div class="e2e-unlock-panel" style="text-align:center;color:var(--text-muted);margin-top:12px">
-            🚫 Вы заблокировали этого пользователя
-        </div>
+        <div class="e2e-unlock-panel" style="text-align:center;color:var(--text-muted)">🚫 Вы заблокировали этого пользователя — отправка недоступна</div>
     {% else %}
     <form id="dm-form" class="chat-form" onsubmit="sendEncrypted(event)">
         {% csrf_token %}
@@ -133,6 +83,7 @@
 </section>
 
 <script src="{% static 'js/openpgp.min.js' %}"></script>
+{% load static %}
 <script src="{% static 'js/e2e.js' %}"></script>
 <script>
 const PARTNER = "{{ partner.username }}";
@@ -140,14 +91,17 @@ const MY_USERNAME = "{{ user.username }}";
 const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
 let myPublicKey = null;
 let partnerPublicKey = null;
+let lastMessageId = 0;
+let pollInterval = null;
 
 async function init() {
-    const session = E2E.getSession();
     const resp = await fetch(`/api/keys/${MY_USERNAME}/`);
     const data = await resp.json();
 
     if (!data.public_key) {
-        await autoGenerateKeys();
+        document.getElementById('unlock-label').textContent = 'Первый вход: введите пароль от аккаунта для создания ключей:';
+        document.getElementById('e2e-unlock').style.display = 'block';
+        setStatus('⚠️ Нет ключей', 'e2e-warn');
         return;
     }
 
@@ -155,70 +109,26 @@ async function init() {
     partnerPublicKey = await E2E.getPublicKey(PARTNER);
     await showFingerprints();
 
+    const session = E2E.getSession();
     if (session.passphrase && session.privateKey) {
-        const valid = await E2E.verifyPassphrase(session.privateKey, session.passphrase);
-        if (valid) {
-            await decryptAll(session.privateKey, session.passphrase);
-            setStatus('🔒 E2E ✓', 'e2e-ok');
-            startPolling();
-            return;
-        }
-        // Keys exist but passphrase wrong - show passphrase panel
-        document.getElementById('e2e-unlock-passphrase').style.display = 'block';
-        document.getElementById('e2e-unlock').style.display = 'block';
-        setStatus('🔑 Пароль не подходит', 'e2e-warn');
-    } else {
-        // No keys in localStorage - new device
-        document.getElementById('e2e-unlock-new-device').style.display = 'block';
-        document.getElementById('e2e-unlock').style.display = 'block';
-        setStatus('🔐 Новое устройство', 'e2e-warn');
-    }
-}
-
-async function autoGenerateKeys() {
-    setStatus('⏳ Генерация ключей…', 'e2e-loading');
-    try {
-        const bytes = crypto.getRandomValues(new Uint8Array(32));
-        const autoPass = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-        
-        const { privateKey, publicKey } = await E2E.generateKeys(MY_USERNAME, autoPass);
-        const save = await E2E.saveKeys(publicKey, privateKey);
-        if (!save.ok) throw new Error(save.error || 'Failed to save keys');
-        
-        E2E.storeSession(privateKey, autoPass);
-        myPublicKey = publicKey;
-        partnerPublicKey = await E2E.getPublicKey(PARTNER);
-        await showFingerprints();
-        
-        document.getElementById('e2e-unlock').style.display = 'none';
-        document.getElementById('e2e-unlock-passphrase').style.display = 'none';
-        document.getElementById('e2e-unlock-new-device').style.display = 'none';
+        await decryptAll(session.privateKey, session.passphrase);
         setStatus('🔒 E2E ✓', 'e2e-ok');
         startPolling();
-    } catch(e) {
-        setStatus('❌ Ошибка', 'e2e-warn');
-        alert('Ошибка генерации ключей: ' + e.message);
+    } else {
         document.getElementById('e2e-unlock').style.display = 'block';
-        document.getElementById('unlock-label').textContent = 'Ошибка авто-генерации. Введите пароль вручную:';
+        setStatus('🔑 Заблокировано', 'e2e-warn');
     }
 }
 
 async function showFingerprints() {
-    if (myPublicKey) {
-        const myFp = await E2E.getFingerprint(myPublicKey);
-        document.getElementById('my-fp').textContent = myFp || '—';
-    }
-    if (partnerPublicKey) {
-        const partnerFp = await E2E.getFingerprint(partnerPublicKey);
-        document.getElementById('partner-fp').textContent = partnerFp || 'нет ключей';
-    } else {
-        document.getElementById('partner-fp').textContent = 'у собеседника нет ключей';
-    }
+    if (myPublicKey) document.getElementById('my-fp').textContent = await E2E.getFingerprint(myPublicKey) || '—';
+    if (partnerPublicKey) document.getElementById('partner-fp').textContent = await E2E.getFingerprint(partnerPublicKey) || 'нет ключей';
+    else document.getElementById('partner-fp').textContent = 'у собеседника нет ключей';
 }
 
 function toggleFingerprints() {
-    const panel = document.getElementById('fp-panel');
-    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    const p = document.getElementById('fp-panel');
+    p.style.display = p.style.display === 'none' ? 'block' : 'none';
 }
 
 async function unlockE2E() {
@@ -230,67 +140,27 @@ async function unlockE2E() {
     const data = await resp.json();
 
     if (!data.public_key) {
-        await autoGenerateKeys();
-    } else {
-        const valid = await E2E.verifyPassphrase(data.encrypted_private_key, passphrase);
-        if (!valid) {
-            setStatus('🔑 Неверный пароль', 'e2e-warn');
-            alert('Пароль не подходит к сохранённым ключам. Попробуйте загрузить резервную копию или создать новые ключи.');
-            return;
+        try {
+            const { privateKey, publicKey } = await E2E.generateKeys(MY_USERNAME, passphrase);
+            await E2E.saveKeys(publicKey, privateKey);
+            E2E.storeSession(privateKey, passphrase);
+            myPublicKey = publicKey;
+            partnerPublicKey = await E2E.getPublicKey(PARTNER);
+            await showFingerprints();
+            document.getElementById('e2e-unlock').style.display = 'none';
+            setStatus('🔒 E2E ✓', 'e2e-ok');
+            startPolling();
+        } catch(e) {
+            setStatus('❌ Ошибка', 'e2e-warn');
+            alert('Ошибка: ' + e.message);
         }
+    } else {
         myPublicKey = data.public_key;
         E2E.storeSession(data.encrypted_private_key, passphrase);
         document.getElementById('e2e-unlock').style.display = 'none';
-        document.getElementById('e2e-unlock-passphrase').style.display = 'none';
-        document.getElementById('e2e-unlock-new-device').style.display = 'none';
         setStatus('🔒 E2E ✓', 'e2e-ok');
         await decryptAll(data.encrypted_private_key, passphrase);
         startPolling();
-    }
-}
-
-async function uploadKeyBackup(input) {
-    const file = input.files[0];
-    if (!file) return;
-    input.value = '';
-    
-    try {
-        const text = await file.text();
-        const data = JSON.parse(text);
-        
-        if (data.username !== MY_USERNAME) {
-            alert('Файл ключей для другого пользователя: ' + data.username);
-            return;
-        }
-        if (!data.encrypted_private_key || !data.public_key) {
-            alert('Неверный формат файла ключей');
-            return;
-        }
-        
-        const session = E2E.getSession();
-        let passphrase = session.passphrase;
-        
-        if (!passphrase) {
-            passphrase = prompt('Введите пароль (passphrase) для этих ключей:');
-            if (!passphrase) return;
-        }
-        
-        const valid = await E2E.verifyPassphrase(data.encrypted_private_key, passphrase);
-        if (!valid) {
-            alert('Неверный пароль. Попробуйте другой файл или пароль.');
-            return;
-        }
-        
-        const save = await E2E.saveKeys(data.public_key, data.encrypted_private_key);
-        if (!save.ok) throw new Error(save.error || 'Failed to save');
-        
-        E2E.storeSession(data.encrypted_private_key, passphrase);
-        myPublicKey = data.public_key;
-        
-        alert('Ключи восстановлены. Страница перезагрузится.');
-        location.reload();
-    } catch (e) {
-        alert('Ошибка импорта: ' + e.message);
     }
 }
 
@@ -304,281 +174,102 @@ async function decryptAll(encPrivKey, passphrase) {
     }
 }
 
-async function sendEncrypted(e) {
-    e.preventDefault();
-    const text = document.getElementById('msg-input').value.trim();
-    if (!text) return;
-
-    const session = E2E.getSession();
-    if (!session.passphrase) {
-        document.getElementById('e2e-unlock').style.display = 'block';
-        return alert('Сначала разблокируйте шифрование');
-    }
-
-    const pKey = partnerPublicKey || await E2E.getPublicKey(PARTNER);
-    if (!pKey) return alert('У собеседника нет ключей. Пусть сначала откроет любой диалог.');
-
-    try {
-        const encrypted = await E2E.encrypt(text, pKey, myPublicKey);
-
-        const resp = await fetch(window.location.pathname, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRFToken': CSRF,
-            },
-            body: 'text=' + encodeURIComponent(encrypted),
-        });
-
-        if (resp.redirected) {
-            document.getElementById('msg-input').value = '';
-            await pollNewMessages();
-        } else if (resp.ok) {
-            alert('Сообщение не отправлено: сервер отклонил запрос (возможно, слишком длинное)');
-        } else {
-            alert('Ошибка отправки: ' + resp.status);
-        }
-    } catch (err) {
-        alert('Ошибка шифрования/отправки: ' + err.message);
-    }
-}
-
-function setStatus(text, cls) {
-    const el = document.getElementById('e2e-status');
-    el.textContent = text;
-    el.className = 'e2e-badge ' + cls;
-}
-
-let lastMessageId = 0;
-let pollInterval = null;
-
 function startPolling() {
     if (pollInterval) return;
+    const msgs = document.querySelectorAll('.dm-msg[data-id]');
+    if (msgs.length) lastMessageId = Math.max(...[...msgs].map(el => parseInt(el.dataset.id) || 0));
     pollInterval = setInterval(pollNewMessages, 3000);
 }
 
 async function pollNewMessages() {
     const session = E2E.getSession();
     if (!session.passphrase || !session.privateKey) return;
-
     try {
         const resp = await fetch(`/api/messages/${PARTNER}/poll/?since=${lastMessageId}`);
         const data = await resp.json();
         if (!data.messages || !data.messages.length) return;
-
         const list = document.getElementById('dm-list');
         const wasAtBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
-
         const empty = list.querySelector('.empty-chat');
         if (empty) empty.remove();
-
         for (const msg of data.messages) {
             lastMessageId = Math.max(lastMessageId, msg.id);
-
             const div = document.createElement('div');
             div.className = 'dm-msg ' + (msg.is_mine ? 'dm-msg-out' : 'dm-msg-in');
             div.dataset.cipher = msg.text;
             div.dataset.id = msg.id;
-
             let plaintext = msg.text;
-            if (msg.text.includes('BEGIN PGP')) {
-                plaintext = await E2E.decrypt(msg.text, session.privateKey, session.passphrase);
-            }
-
-            const p = document.createElement('p');
-            p.className = 'msg-text';
-            if (plaintext.includes('\n')) {
-                const lines = plaintext.split('\n');
-                lines.forEach((line, i) => {
-                    if (i > 0) p.appendChild(document.createElement('br'));
-                    p.appendChild(document.createTextNode(line));
-                });
-            } else {
-                p.textContent = plaintext;
-            }
-            const time = document.createElement('time');
-            time.textContent = msg.created_at;
-            div.appendChild(p);
-            div.appendChild(time);
+            if (msg.text.includes('BEGIN PGP')) plaintext = await E2E.decrypt(msg.text, session.privateKey, session.passphrase);
+            div.innerHTML = `<p class="msg-text">${plaintext.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}</p><time>${msg.created_at}</time>`;
             list.appendChild(div);
         }
-
         if (wasAtBottom) list.scrollTop = list.scrollHeight;
-    } catch(e) {
-        // Silent fail - will retry next interval
+    } catch(e) {}
+}
+
+async function sendEncrypted(e) {
+    e.preventDefault();
+    const text = document.getElementById('msg-input').value.trim();
+    if (!text) return;
+    const session = E2E.getSession();
+    if (!session.passphrase) { document.getElementById('e2e-unlock').style.display = 'block'; return alert('Сначала разблокируйте шифрование'); }
+    const pKey = partnerPublicKey || await E2E.getPublicKey(PARTNER);
+    if (!pKey) return alert('У собеседника нет ключей. Пусть сначала откроет любой диалог.');
+    const encrypted = await E2E.encrypt(text, pKey, myPublicKey);
+    const resp = await fetch(window.location.pathname, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': CSRF },
+        body: 'text=' + encodeURIComponent(encrypted),
+    });
+    if (resp.ok || resp.redirected) {
+        document.getElementById('msg-input').value = '';
+        await pollNewMessages();
     }
+}
+
+async function editMessage(msgId) {
+    const el = document.querySelector(`.dm-msg[data-id="${msgId}"]`);
+    if (!el) return;
+    const session = E2E.getSession();
+    let current = '';
+    if (el.dataset.cipher.includes('BEGIN PGP') && session.passphrase)
+        current = await E2E.decrypt(el.dataset.cipher, session.privateKey, session.passphrase);
+    const newText = prompt('Редактировать сообщение:', current);
+    if (!newText || newText === current) return;
+    const pKey = partnerPublicKey || await E2E.getPublicKey(PARTNER);
+    const encrypted = await E2E.encrypt(newText, pKey, myPublicKey);
+    const resp = await fetch(`/messages/${PARTNER}/edit/${msgId}/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': CSRF },
+        body: 'text=' + encodeURIComponent(encrypted),
+    });
+    const data = await resp.json();
+    if (data.ok) { el.dataset.cipher = encrypted; el.querySelector('.msg-text').textContent = newText; }
+    else alert('Ошибка: ' + (data.error || 'неизвестно'));
+}
+
+async function deleteMessage(msgId) {
+    if (!confirm('Удалить сообщение?')) return;
+    const resp = await fetch(`/messages/${PARTNER}/delete/${msgId}/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF },
+    });
+    const data = await resp.json();
+    if (data.ok) {
+        const el = document.querySelector(`.dm-msg[data-id="${msgId}"]`);
+        if (el) el.remove();
+    } else alert('Ошибка: ' + (data.error || 'неизвестно'));
+}
+
+function setStatus(text, cls) {
+    const el = document.getElementById('e2e-status');
+    el.textContent = text; el.className = 'e2e-badge ' + cls;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     const list = document.getElementById('dm-list');
     if (list) list.scrollTop = list.scrollHeight;
-
-    const msgs = document.querySelectorAll('.dm-msg[data-id]');
-    if (msgs.length) {
-        lastMessageId = Math.max(...[...msgs].map(el => parseInt(el.dataset.id) || 0));
-    }
-
     init();
 });
-
-let replyToId = null;
-let replyPreviewEl = null;
-
-function replyTo(msgId) {
-    const el = document.querySelector(`.dm-msg[data-id="${msgId}"]`);
-    if (!el) return;
-    const textEl = el.querySelector('.msg-text');
-    const text = textEl ? textEl.textContent : 'Сообщение';
-    replyToId = msgId;
-    
-    // Remove old preview
-    if (replyPreviewEl) replyPreviewEl.remove();
-    
-    // Create reply preview above input
-    replyPreviewEl = document.createElement('div');
-    replyPreviewEl.className = 'reply-preview';
-    replyPreviewEl.innerHTML = `
-        <span>↳ Ответ: ${text.slice(0, 100)}${text.length > 100 ? '...' : ''}</span>
-        <button onclick="cancelReply()" style="background:none;border:none;cursor:pointer;margin-left:8px">✕</button>
-    `;
-    
-    const form = document.getElementById('dm-form');
-    form.parentNode.insertBefore(replyPreviewEl, form);
-    document.getElementById('msg-input').focus();
-}
-
-function cancelReply() {
-    replyToId = null;
-    if (replyPreviewEl) { replyPreviewEl.remove(); replyPreviewEl = null; }
-    document.getElementById('msg-input').placeholder = 'Написать сообщение...';
-}
-
-async async function editMessage(msgId) {
-    const el = document.querySelector(`.dm-msg[data-id="${msgId}"]`);
-    if (!el) return;
-    const cipher = el.dataset.cipher;
-    const session = E2E.getSession();
-    let current = cipher;
-    if (cipher.includes('BEGIN PGP') && session.passphrase && session.privateKey) {
-        current = await E2E.decrypt(cipher, session.privateKey, session.passphrase);
-    }
-    const newText = prompt('Редактировать сообщение:', current);
-    if (!newText || newText === current) return;
-
-    // Re-encrypt new text for both sender and recipient
-    const pKey = partnerPublicKey || await E2E.getPublicKey(PARTNER);
-    if (!pKey || !myPublicKey) {
-        return alert('Нет ключей для шифрования. Обновите страницу.');
-    }
-
-    let encrypted;
-    try {
-        encrypted = await E2E.encrypt(newText, pKey, myPublicKey);
-    } catch (err) {
-        return alert('Ошибка шифрования: ' + err.message);
-    }
-
-    const resp = await fetch(`/messages/${PARTNER}/edit/${msgId}/`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'X-CSRFToken': CSRF,
-        },
-        credentials: 'same-origin',
-        body: 'text=' + encodeURIComponent(encrypted),
-    });
-    const data = await resp.json();
-    console.log('editMessage response:', resp.status, data);
-    if (data.ok) {
-        el.dataset.cipher = encrypted;
-        el.querySelector('.msg-text').textContent = newText;
-        const time = el.querySelector('time');
-        if (time && !time.textContent.includes('(изм.)')) {
-            time.textContent += ' (изм.)';
-        }
-    } else {
-        alert('Ошибка: ' + (data.error || 'Не удалось отредактировать'));
-    }
-}
-
-async async function deleteMessage(msgId) {
-    if (!confirm('Удалить сообщение?')) return;
-    const resp = await fetch(`/messages/${PARTNER}/delete/${msgId}/`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'X-CSRFToken': CSRF,
-        },
-        credentials: 'same-origin',
-    });
-    const data = await resp.json();
-    if (data.ok) {
-        const el = document.querySelector(`.dm-msg[data-id="${msgId}"]`);
-        if (el) {
-            el.classList.add('dm-msg-deleted');
-            el.querySelector('.msg-text').textContent = '🗑 Сообщение удалено';
-            el.querySelector('.msg-actions')?.remove();
-        }
-    } else {
-        alert('Ошибка: ' + (data.error || 'Не удалось удалить'));
-    }
-}
-
-function searchMessages(query) {
-    const q = query.trim().toLowerCase();
-    const msgs = document.querySelectorAll('.dm-msg[data-id]');
-    for (const el of msgs) {
-        const text = el.querySelector('.msg-text')?.textContent?.toLowerCase() || '';
-        if (!q || text.includes(q)) {
-            el.style.display = '';
-        } else {
-            el.style.display = 'none';
-        }
-    }
-}
-
-// Update sendEncrypted to include reply_to
-const originalSendEncrypted = sendEncrypted;
-sendEncrypted = async function(e) {
-    e.preventDefault();
-    const text = document.getElementById('msg-input').value.trim();
-    if (!text) return;
-
-    const session = E2E.getSession();
-    if (!session.passphrase) {
-        document.getElementById('e2e-unlock').style.display = 'block';
-        return alert('Сначала разблокируйте шифрование');
-    }
-
-    const pKey = partnerPublicKey || await E2E.getPublicKey(PARTNER);
-    if (!pKey) return alert('У собеседника нет ключей. Пусть сначала откроет любой диалог.');
-
-    try {
-        const encrypted = await E2E.encrypt(text, pKey, myPublicKey);
-
-        const formData = new URLSearchParams();
-        formData.append('text', encrypted);
-        formData.append('csrfmiddlewaretoken', CSRF);
-        if (replyToId) {
-            formData.append('reply_to', replyToId);
-            replyToId = null;
-            document.getElementById('msg-input').placeholder = 'Написать сообщение...';
-        }
-
-        const resp = await fetch(window.location.pathname, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: formData.toString(),
-        });
-        if (resp.ok) {
-            document.getElementById('msg-input').value = '';
-            location.reload();
-        } else {
-            alert('Ошибка отправки');
-        }
-    } catch (err) {
-        alert('Ошибка шифрования: ' + err.message);
-    }
-};
 </script>
 {% endblock %}
