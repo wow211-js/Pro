@@ -75,7 +75,7 @@
     {% elif is_blocked_by_me %}
         <div class="e2e-unlock-panel" style="text-align:center;color:var(--text-muted)">🚫 Вы заблокировали этого пользователя — отправка недоступна</div>
     {% else %}
-    <div id="reply-indicator" style="display:none;padding:8px 12px;background:var(--bg-code);border-left:3px solid var(--accent);border-radius:4px;margin-bottom:8px;font-size:0.85rem;color:var(--text-muted);display:flex;justify-content:space-between;align-items:center">
+    <div id="reply-indicator" style="display:none;padding:8px 12px;background:var(--bg-code);border-left:3px solid var(--accent);border-radius:4px;margin-bottom:8px;font-size:0.85rem;color:var(--text-muted);">
         <span id="reply-text"></span>
         <button onclick="cancelReply()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);padding:0 4px">✕</button>
     </div>
@@ -205,7 +205,20 @@ async function pollNewMessages() {
             div.dataset.id = msg.id;
             let plaintext = msg.text;
             if (msg.text.includes('BEGIN PGP')) plaintext = await E2E.decrypt(msg.text, session.privateKey, session.passphrase);
-            div.innerHTML = `<p class="msg-text">${plaintext.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}</p><time>${msg.created_at}</time>`;
+            const isMine = msg.is_mine;
+            const editDeleteBtns = isMine
+                ? `<button onclick="editMessage(${msg.id})" class="msg-action-btn" title="Редактировать">✎</button>
+                   <button onclick="deleteMessage(${msg.id})" class="msg-action-btn" title="Удалить">✕</button>`
+                : '';
+            div.innerHTML = `
+                <p class="msg-text">${plaintext.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}</p>
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                    <time>${msg.created_at}</time>
+                    <span style="display:flex;gap:4px">
+                        <button onclick="replyTo(${msg.id},'${(msg.sender||'').replace(/'/g,\'')}')" class="msg-action-btn" title="Ответить">↩</button>
+                        ${editDeleteBtns}
+                    </span>
+                </div>`;
             list.appendChild(div);
         }
         if (wasAtBottom) list.scrollTop = list.scrollHeight;
@@ -220,7 +233,18 @@ async function sendEncrypted(e) {
     if (!session.passphrase) { document.getElementById('e2e-unlock').style.display = 'block'; return alert('Сначала разблокируйте шифрование'); }
     const pKey = partnerPublicKey || await E2E.getPublicKey(PARTNER);
     if (!pKey) return alert('У собеседника нет ключей. Пусть сначала откроет любой диалог.');
-    const encrypted = await E2E.encrypt(text, pKey, myPublicKey);
+
+    // If replying, prepend quote marker
+    let fullText = text;
+    if (replyToId) {
+        const replyEl = document.querySelector(`.dm-msg[data-id="${replyToId}"]`);
+        const replyName = document.getElementById('reply-text').textContent.replace('↩ ', '');
+        const replyContent = replyEl ? replyEl.querySelector('.msg-text').textContent : '';
+        fullText = `[↩ ${replyName}: ${replyContent.slice(0,60)}${replyContent.length>60?'…':''}]\n${text}`;
+        cancelReply();
+    }
+
+    const encrypted = await E2E.encrypt(fullText, pKey, myPublicKey);
     const resp = await fetch(window.location.pathname, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': CSRF },
@@ -273,6 +297,8 @@ function replyTo(msgId, senderName) {
     const el = document.getElementById('reply-indicator');
     document.getElementById('reply-text').textContent = '↩ ' + senderName;
     el.style.display = 'flex';
+    el.style.alignItems = 'center';
+    el.style.justifyContent = 'space-between';
     document.getElementById('msg-input').focus();
 }
 
