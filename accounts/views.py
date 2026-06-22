@@ -245,7 +245,7 @@ def conversation(request, username):
         (Q(sender=request.user, recipient=partner) |
          Q(sender=partner, recipient=request.user)),
         is_deleted=False,
-    ).select_related('reply_to__sender').order_by('created_at')
+    ).select_related('sender', 'recipient').order_by('created_at')
 
     return render(request, 'accounts/conversation.html', {
         'partner': partner,
