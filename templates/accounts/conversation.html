@@ -209,7 +209,7 @@ async function decryptAll(encPrivKey, passphrase) {
             fail++;
         } else {
             success++;
-            el.querySelector('.msg-text').textContent = plain;
+            el.querySelector('.msg-text').innerHTML = renderText(plain);
         }
     }
     console.log('decryptAll: success=' + success + ', fail=' + fail + ', total=' + msgs.length);
@@ -242,7 +242,7 @@ async function pollNewMessages() {
             div.dataset.id = msg.id;
             let plaintext = msg.text;
             if (msg.text.includes('BEGIN PGP')) plaintext = await E2E.decrypt(msg.text, session.privateKey, session.passphrase);
-            div.innerHTML = `<p class="msg-text">${plaintext.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}</p><time>${msg.created_at}</time>`;
+            div.innerHTML = `<p class="msg-text">${renderText(plaintext)}</p><time>${msg.created_at}</time>`;
             list.appendChild(div);
         }
         if (wasAtBottom) list.scrollTop = list.scrollHeight;
@@ -251,12 +251,26 @@ async function pollNewMessages() {
 
 async function sendEncrypted(e) {
     e.preventDefault();
-    const text = document.getElementById('msg-input').value.trim();
+    let text = document.getElementById('msg-input').value.trim();
     if (!text) return;
     const session = E2E.getSession();
     if (!session.passphrase) { document.getElementById('e2e-unlock').style.display = 'block'; return alert('Сначала разблокируйте шифрование'); }
     const pKey = partnerPublicKey || await E2E.getPublicKey(PARTNER);
     if (!pKey) return alert('У собеседника нет ключей. Пусть сначала откроет любой диалог.');
+
+    // If replying, prepend quoted text
+    if (replyToId) {
+        const replyEl = document.querySelector(`.dm-msg[data-id="${replyToId}"]`);
+        const quotedName = document.getElementById('reply-text').textContent.replace('↩ ', '');
+        let quotedText = '';
+        if (replyEl) {
+            quotedText = replyEl.querySelector('.msg-text')?.textContent || '';
+            if (quotedText.length > 60) quotedText = quotedText.slice(0, 60) + '…';
+        }
+        text = `> ${quotedName}: ${quotedText}\n\n${text}`;
+        cancelReply();
+    }
+
     const encrypted = await E2E.encrypt(text, pKey, myPublicKey);
     const resp = await fetch(window.location.pathname, {
         method: 'POST',
@@ -316,6 +330,16 @@ function replyTo(msgId, senderName) {
 function cancelReply() {
     replyToId = null;
     document.getElementById('reply-indicator').style.display = 'none';
+}
+
+function renderText(plain) {
+    // Render > quoted lines differently
+    return plain.split('\n').map(line => {
+        if (line.startsWith('> ')) {
+            return `<span class="msg-quote">${line.slice(2).replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span>`;
+        }
+        return line.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }).join('<br>');
 }
 
 function setStatus(text, cls) {
