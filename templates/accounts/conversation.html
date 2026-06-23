@@ -290,17 +290,33 @@ async function editMessage(msgId) {
     let current = '';
     if (el.dataset.cipher.includes('BEGIN PGP') && session.passphrase)
         current = await E2E.decrypt(el.dataset.cipher, session.privateKey, session.passphrase);
-    const newText = prompt('Редактировать сообщение:', current);
-    if (!newText || newText === current) return;
+
+    // Strip quote prefix (lines starting with "> ") to show only user's own text
+    const lines = current.split('\n');
+    let quoteEnd = 0;
+    for (let i = 0; i < lines.length; i++) {
+        if (lines[i].startsWith('> ')) { quoteEnd = i + 1; }
+        else if (lines[i] === '' && quoteEnd === i) { quoteEnd = i + 1; }
+        else break;
+    }
+    const editableText = lines.slice(quoteEnd).join('\n').trim();
+    const quotePrefix = lines.slice(0, quoteEnd).join('\n');
+
+    const newText = prompt('Редактировать сообщение:', editableText);
+    if (!newText || newText === editableText) return;
+
+    // Re-attach quote prefix so reply context is preserved
+    const fullText = quotePrefix ? quotePrefix + '\n\n' + newText : newText;
+
     const pKey = partnerPublicKey || await E2E.getPublicKey(PARTNER);
-    const encrypted = await E2E.encrypt(newText, pKey, myPublicKey);
+    const encrypted = await E2E.encrypt(fullText, pKey, myPublicKey);
     const resp = await fetch(`/messages/${PARTNER}/edit/${msgId}/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': CSRF },
         body: 'text=' + encodeURIComponent(encrypted),
     });
     const data = await resp.json();
-    if (data.ok) { el.dataset.cipher = encrypted; el.querySelector('.msg-text').textContent = newText; }
+    if (data.ok) { el.dataset.cipher = encrypted; el.querySelector('.msg-text').innerHTML = renderText(fullText); }
     else alert('Ошибка: ' + (data.error || 'неизвестно'));
 }
 
