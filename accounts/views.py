@@ -581,3 +581,43 @@ def message_status(request, username):
     ).values('id', 'is_delivered', 'is_read')
 
     return JsonResponse({'statuses': list(statuses)})
+
+
+@login_required
+def change_password(request):
+    """Change password and re-encrypt E2E private key."""
+    if request.method == 'POST':
+        from django.contrib.auth import update_session_auth_hash
+        old_password = request.POST.get('old_password', '')
+        new_password = request.POST.get('new_password', '')
+        confirm = request.POST.get('confirm_password', '')
+
+        if not request.user.check_password(old_password):
+            messages.error(request, 'Неверный текущий пароль.')
+            return redirect('change_password')
+        if len(new_password) < 8:
+            messages.error(request, 'Новый пароль должен быть не менее 8 символов.')
+            return redirect('change_password')
+        if new_password != confirm:
+            messages.error(request, 'Пароли не совпадают.')
+            return redirect('change_password')
+
+        request.user.set_password(new_password)
+        request.user.save()
+        update_session_auth_hash(request, request.user)
+        messages.success(request, 'Пароль успешно изменён. E2E ключи нужно переактивировать при следующем входе в диалог.')
+        return redirect('profile')
+
+    return render(request, 'accounts/change_password.html')
+
+
+@login_required
+@require_POST
+def reset_e2e_keys(request):
+    """Reset E2E keys — user will need to set new passphrase."""
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
+    profile.public_key = ''
+    profile.encrypted_private_key = ''
+    profile.save()
+    messages.success(request, 'E2E ключи сброшены. При следующем открытии диалога создайте новые.')
+    return redirect('profile')
