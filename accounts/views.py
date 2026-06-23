@@ -558,3 +558,26 @@ def totp_verify(request):
             return redirect('login')
 
     return render(request, 'accounts/totp_verify.html')
+
+
+@login_required
+def message_status(request, username):
+    """Return read status of sent messages + mark incoming as read."""
+    from django.contrib.auth.models import User
+    from django.db import models as dj_models
+    try:
+        partner = User.objects.get(username=username)
+    except User.DoesNotExist:
+        return JsonResponse({'error': 'not found'}, status=404)
+
+    # Mark all incoming as read
+    DirectMessage.objects.filter(
+        sender=partner, recipient=request.user, is_read=False
+    ).update(is_read=True)
+
+    # Return read status of MY sent messages
+    statuses = DirectMessage.objects.filter(
+        sender=request.user, recipient=partner
+    ).values('id', 'is_delivered', 'is_read')
+
+    return JsonResponse({'statuses': list(statuses)})
