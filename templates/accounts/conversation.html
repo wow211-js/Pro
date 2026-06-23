@@ -75,12 +75,12 @@
     {% elif is_blocked_by_me %}
         <div class="e2e-unlock-panel" style="text-align:center;color:var(--text-muted)">🚫 Вы заблокировали этого пользователя — отправка недоступна</div>
     {% else %}
-    <div id="reply-indicator" style="display:none;padding:8px 12px;background:var(--bg-code);border-left:3px solid var(--accent);border-radius:4px;margin-bottom:8px;font-size:0.85rem;color:var(--text-muted);justify-content:space-between;align-items:center">
-        <span id="reply-text"></span>
-        <button onclick="cancelReply()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);padding:0 4px;font-size:1rem">✕</button>
-    </div>
     <form id="dm-form" class="chat-form" onsubmit="sendEncrypted(event)">
         {% csrf_token %}
+        <div id="reply-indicator" style="display:none;padding:6px 10px;justify-content:space-between;align-items:center">
+            <span id="reply-text"></span>
+            <button onclick="cancelReply()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);padding:0 4px;font-size:1rem;line-height:1">✕</button>
+        </div>
         <textarea id="msg-input" rows="2" placeholder="Написать сообщение..."
             style="width:100%;border:1px solid var(--input-border);border-radius:8px;padding:12px 14px;font:inherit;background:var(--bg-input);color:var(--text);resize:vertical"></textarea>
         <button type="submit">Отправить</button>
