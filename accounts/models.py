@@ -101,6 +101,7 @@ class DirectMessage(models.Model):
     # Encrypted ciphertext (base64 encoded)
     text = models.TextField('Сообщение (зашифровано)')
     created_at = models.DateTimeField('Дата отправки', auto_now_add=True)
+    is_delivered = models.BooleanField('Доставлено', default=True)
     is_read = models.BooleanField('Прочитано', default=False)
     is_deleted = models.BooleanField('Удалено', default=False)
     is_edited = models.BooleanField('Изменено', default=False)
