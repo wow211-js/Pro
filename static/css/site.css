@@ -1061,23 +1061,33 @@ textarea::-webkit-resizer {
 .msg-quote {
     display: block;
     padding: 4px 8px;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
     border-left: 3px solid var(--accent);
-    background: rgba(0,0,0,0.08);
+    background: var(--border-inner);
     border-radius: 0 4px 4px 0;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     color: var(--text-muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-[data-theme="dark"] .msg-quote {
-    background: rgba(255,255,255,0.06);
+.dm-msg-out .msg-quote {
+    border-left-color: rgba(255,255,255,0.6);
+    background: rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.75);
 }
 
-.dm-msg-out .msg-quote {
-    border-left-color: rgba(255,255,255,0.5);
-    background: rgba(255,255,255,0.1);
-    color: rgba(255,255,255,0.7);
+/* Reply indicator above input */
+#reply-indicator {
+    background: var(--bg-code) !important;
+    border-left: 3px solid var(--accent);
+    color: var(--text) !important;
+    border-radius: 4px;
+    margin-bottom: 6px;
+}
+
+#reply-indicator #reply-text {
+    color: var(--text-muted);
+    font-size: 0.85rem;
 }
