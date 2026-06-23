@@ -1060,22 +1060,36 @@ textarea::-webkit-resizer {
 /* ─── Message quote ──────────────────────────────────────── */
 .msg-quote {
     display: block;
-    padding: 4px 8px;
-    margin-bottom: 4px;
-    border-left: 3px solid var(--accent);
-    background: var(--border-inner);
-    border-radius: 0 4px 4px 0;
-    font-size: 0.82rem;
-    color: var(--text-muted);
+    padding: 3px 7px;
+    margin-bottom: 3px;
+    border-left: 3px solid rgba(0,0,0,0.25);
+    background: rgba(0,0,0,0.08);
+    border-radius: 0 3px 3px 0;
+    font-size: 0.80rem;
+    color: rgba(0,0,0,0.55);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
+/* Incoming messages - light bg, dark quote */
+.dm-msg-in .msg-quote {
+    border-left-color: var(--accent);
+    background: var(--border-inner);
+    color: var(--text-muted);
+}
+
+/* Outgoing messages - always semi-transparent dark overlay */
 .dm-msg-out .msg-quote {
-    border-left-color: rgba(255,255,255,0.6);
-    background: rgba(255,255,255,0.15);
-    color: rgba(255,255,255,0.75);
+    border-left-color: rgba(255,255,255,0.5);
+    background: rgba(0,0,0,0.18);
+    color: rgba(255,255,255,0.65);
+}
+
+[data-theme="dark"] .dm-msg-in .msg-quote {
+    background: rgba(255,255,255,0.07);
+    border-left-color: var(--accent);
+    color: var(--text-muted);
 }
 
 /* Reply indicator above input */
