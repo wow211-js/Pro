@@ -27,8 +27,13 @@
             </div>
         </dl>
 
-        <div style="margin-top:16px">
+        <div style="margin-top:16px;display:grid;gap:8px">
             <a href="{% url 'totp_setup' %}" class="secondary">🔐 Настройка 2FA</a>
+            <a href="{% url 'change_password' %}" class="secondary">🔑 Сменить пароль</a>
+            <form method="post" action="{% url 'reset_e2e_keys' %}" onsubmit="return confirm('Сбросить E2E ключи? Старые сообщения нельзя будет расшифровать.')">
+                {% csrf_token %}
+                <button type="submit" class="secondary" style="width:100%">🗝 Сбросить E2E ключи</button>
+            </form>
         </div>
         <form method="post" class="auth-form" style="margin-top:16px">
             {% csrf_token %}
