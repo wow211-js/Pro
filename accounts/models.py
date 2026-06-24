@@ -126,3 +126,30 @@ class DirectMessage(models.Model):
 
     def __str__(self):
         return f'{self.sender.username} → {self.recipient.username}: [encrypted]'
+
+
+class CallSignal(models.Model):
+    SIGNAL_TYPES = [
+        ('offer', 'Offer'),
+        ('answer', 'Answer'),
+        ('ice', 'ICE Candidate'),
+        ('hangup', 'Hangup'),
+        ('ring', 'Ring'),
+    ]
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name='sent_signals',
+        on_delete=models.CASCADE,
+    )
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name='received_signals',
+        on_delete=models.CASCADE,
+    )
+    signal_type = models.CharField(max_length=10, choices=SIGNAL_TYPES)
+    payload = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    consumed = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['created_at']
