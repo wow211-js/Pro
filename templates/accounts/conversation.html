@@ -46,6 +46,12 @@
             <input type="password" id="unlock-passphrase" placeholder="Пароль от аккаунта" class="e2e-input">
             <button onclick="unlockE2E()" class="button-link" style="white-space:nowrap">Разблокировать</button>
         </div>
+        <p class="muted" style="margin-top:8px;font-size:0.85rem">
+            <label style="cursor:pointer;text-decoration:underline">
+                <input type="file" id="key-import" style="display:none" onchange="uploadKeyBackup(this)" accept=".json">
+                📂 Загрузить резервную копию ключей
+            </label>
+        </p>
     </div>
 
     <div class="chat-list dm-messages" id="dm-list">

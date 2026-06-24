@@ -31,9 +31,9 @@ class SecurityHeadersMiddleware:
         # Referrer policy
         response['Referrer-Policy'] = 'strict-origin-when-cross-origin'
 
-        # Permissions policy
+        # Permissions policy - allow camera/mic for video calls
         response['Permissions-Policy'] = (
-            'camera=(), microphone=(), geolocation=(), '
+            'camera=(self), microphone=(self), geolocation=(), '
             'accelerometer=(), gyroscope=(), magnetometer=(), '
             'payment=(), usb=()'
         )
