@@ -84,7 +84,7 @@
     {% else %}
     <form id="dm-form" class="chat-form" onsubmit="sendEncrypted(event)">
         {% csrf_token %}
-        <div id="reply-indicator" style="display:none;padding:6px 10px;justify-content:space-between;align-items:center">
+        <div id="reply-indicator" style="display:none;padding:6px 10px;justify-content:space-between;align-items:center;background:var(--bg-code);border-left:3px solid var(--accent);border-radius:4px;margin-bottom:6px;font-size:0.85rem;color:var(--text-muted)">
             <span id="reply-text"></span>
             <button onclick="cancelReply()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);padding:0 4px;font-size:1rem;line-height:1">✕</button>
         </div>
