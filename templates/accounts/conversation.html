@@ -9,6 +9,7 @@
         <strong>{{ partner.username }}</strong>
         <span id="e2e-status" class="e2e-badge e2e-loading" style="cursor:pointer" onclick="toggleFingerprints()" title="Нажмите для проверки ключей">🔒 …</span>
         <div style="margin-left:auto;display:flex;gap:8px">
+            <button onclick="startCall()" id="call-btn" class="icon-btn" title="Видеозвонок">📹</button>
             {% if is_blocked_by_me %}
                 <form method="post" action="{% url 'unblock_user' partner.username %}">
                     {% csrf_token %}
@@ -86,6 +87,27 @@
         <button type="submit">Отправить</button>
     </form>
     {% endif %}
+    <!-- Incoming call notification -->
+    <div id="incoming-call" style="display:none;position:fixed;top:20px;right:20px;z-index:1000;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;box-shadow:var(--shadow);align-items:center;gap:12px">
+        <span>📹 Входящий звонок от <strong>{{ partner.username }}</strong></span>
+        <button onclick="acceptCall()" style="background:#22c55e;color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:700">Принять</button>
+        <button onclick="rejectCall()" style="background:#ef4444;color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:700">Отклонить</button>
+    </div>
+
+    <!-- Call overlay -->
+    <div id="call-overlay" style="display:none;position:fixed;inset:0;z-index:999;background:#000;flex-direction:column;align-items:center;justify-content:center;gap:12px">
+        <div id="call-status" style="color:#fff;font-size:1rem;margin-bottom:8px">Звонок</div>
+        <div style="position:relative;width:100%;max-width:800px;aspect-ratio:16/9;background:#111;border-radius:12px;overflow:hidden">
+            <video id="remote-video" autoplay playsinline style="width:100%;height:100%;object-fit:cover"></video>
+            <video id="local-video" autoplay playsinline muted style="position:absolute;bottom:12px;right:12px;width:140px;border-radius:8px;border:2px solid #fff"></video>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:8px">
+            <button id="mute-btn" onclick="toggleMute()" class="icon-btn" style="width:48px;height:48px;font-size:1.3rem;background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.2);color:#fff">🎤</button>
+            <button id="cam-btn" onclick="toggleCamera()" class="icon-btn" style="width:48px;height:48px;font-size:1.3rem;background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.2);color:#fff">📹</button>
+            <button onclick="endCall()" style="width:48px;height:48px;border-radius:50%;background:#ef4444;border:none;color:#fff;font-size:1.3rem;cursor:pointer">📵</button>
+        </div>
+    </div>
+
 </section>
 
 <script src="{% static 'js/openpgp.min.js' %}"></script>
@@ -388,6 +410,133 @@ function renderText(plain) {
 function setStatus(text, cls) {
     const el = document.getElementById('e2e-status');
     el.textContent = text; el.className = 'e2e-badge ' + cls;
+}
+
+
+// ─── WebRTC Video Call ────────────────────────────────────
+const STUN_SERVERS = { iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+]};
+
+let pc = null;
+let localStream = null;
+let callPollInterval = null;
+let isCaller = false;
+
+function getCallOverlay() { return document.getElementById('call-overlay'); }
+
+async function sendSignal(type, payload) {
+    await fetch(`/api/call/${PARTNER}/signal/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+        body: JSON.stringify({ type, payload }),
+    });
+}
+
+async function pollSignals() {
+    const resp = await fetch(`/api/call/${PARTNER}/poll/`);
+    const data = await resp.json();
+    for (const signal of data.signals || []) {
+        await handleSignal(signal);
+    }
+}
+
+async function handleSignal(signal) {
+    if (signal.type === 'ring') {
+        showIncomingCall();
+    } else if (signal.type === 'offer') {
+        if (!pc) await setupPC(false);
+        await pc.setRemoteDescription(new RTCSessionDescription(signal.payload));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        await sendSignal('answer', answer);
+        showCallOverlay(false);
+    } else if (signal.type === 'answer') {
+        await pc.setRemoteDescription(new RTCSessionDescription(signal.payload));
+    } else if (signal.type === 'ice') {
+        if (pc && signal.payload) await pc.addIceCandidate(new RTCIceCandidate(signal.payload));
+    } else if (signal.type === 'hangup') {
+        endCall();
+    }
+}
+
+async function setupPC(asCaller) {
+    isCaller = asCaller;
+    pc = new RTCPeerConnection(STUN_SERVERS);
+
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+    document.getElementById('local-video').srcObject = localStream;
+
+    pc.ontrack = e => {
+        document.getElementById('remote-video').srcObject = e.streams[0];
+    };
+    pc.onicecandidate = e => {
+        if (e.candidate) sendSignal('ice', e.candidate);
+    };
+    pc.onconnectionstatechange = () => {
+        if (['disconnected','failed','closed'].includes(pc.connectionState)) endCall();
+    };
+}
+
+async function startCall() {
+    if (pc) return;
+    await setupPC(true);
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await sendSignal('ring', {});
+    await sendSignal('offer', offer);
+    showCallOverlay(true);
+    startCallPolling();
+}
+
+async function acceptCall() {
+    document.getElementById('incoming-call').style.display = 'none';
+    startCallPolling();
+}
+
+function rejectCall() {
+    document.getElementById('incoming-call').style.display = 'none';
+    sendSignal('hangup', {});
+}
+
+function endCall() {
+    if (localStream) localStream.getTracks().forEach(t => t.stop());
+    if (pc) { pc.close(); pc = null; }
+    localStream = null;
+    if (callPollInterval) { clearInterval(callPollInterval); callPollInterval = null; }
+    const overlay = getCallOverlay();
+    if (overlay) overlay.style.display = 'none';
+    document.getElementById('incoming-call').style.display = 'none';
+}
+
+function toggleMute() {
+    if (!localStream) return;
+    const audio = localStream.getAudioTracks()[0];
+    if (audio) { audio.enabled = !audio.enabled; document.getElementById('mute-btn').textContent = audio.enabled ? '🎤' : '🔇'; }
+}
+
+function toggleCamera() {
+    if (!localStream) return;
+    const video = localStream.getVideoTracks()[0];
+    if (video) { video.enabled = !video.enabled; document.getElementById('cam-btn').textContent = video.enabled ? '📹' : '📷'; }
+}
+
+function showCallOverlay(calling) {
+    const overlay = getCallOverlay();
+    overlay.style.display = 'flex';
+    document.getElementById('call-status').textContent = calling ? 'Исходящий звонок...' : 'Звонок';
+}
+
+function showIncomingCall() {
+    document.getElementById('incoming-call').style.display = 'flex';
+    startCallPolling();
+}
+
+function startCallPolling() {
+    if (callPollInterval) return;
+    callPollInterval = setInterval(pollSignals, 1000);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
