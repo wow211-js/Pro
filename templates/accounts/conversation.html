@@ -303,13 +303,21 @@ async function sendEncrypted(e) {
     const pKey = partnerPublicKey || await E2E.getPublicKey(PARTNER);
     if (!pKey) return alert('У собеседника нет ключей. Пусть сначала откроет любой диалог.');
 
-    // If replying, prepend quoted text
+    // If replying, prepend quoted text (only main text, not nested quotes)
     if (replyToId) {
         const replyEl = document.querySelector(`.dm-msg[data-id="${replyToId}"]`);
         const quotedName = document.getElementById('reply-text').textContent.replace('↩ ', '');
         let quotedText = '';
         if (replyEl) {
-            quotedText = replyEl.querySelector('.msg-text')?.textContent || '';
+            const msgTextEl = replyEl.querySelector('.msg-text');
+            if (msgTextEl) {
+                // Clone and remove quote spans to get only main text
+                const clone = msgTextEl.cloneNode(true);
+                for (const quote of clone.querySelectorAll('.msg-quote')) {
+                    quote.remove();
+                }
+                quotedText = clone.textContent.trim();
+            }
             if (quotedText.length > 60) quotedText = quotedText.slice(0, 60) + '…';
         }
         text = `> ${quotedName}: ${quotedText}\n\n${text}`;
