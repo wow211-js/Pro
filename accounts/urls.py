@@ -25,8 +25,6 @@ urlpatterns = [
     path('api/keys/save/', views.save_keys, name='save_keys'),
     path('api/messages/<str:username>/poll/', views.poll_messages, name='poll_messages'),
     path('api/messages/<str:username>/status/', views.message_status, name='message_status'),
-    path('api/call/<str:username>/signal/', views.call_signal, name='call_signal'),
-    path('api/call/<str:username>/poll/', views.poll_signals, name='poll_signals'),
     path('api/keys/<str:username>/', views.get_public_key, name='get_public_key'),
     path('api/chat/poll/', views.poll_chat, name='poll_chat'),
 ]
