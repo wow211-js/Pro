@@ -75,6 +75,7 @@ CSRF_TRUSTED_ORIGINS += [
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'accounts',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -82,6 +83,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'channels',
 ]
 
 MIDDLEWARE = [
@@ -118,6 +120,22 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'config.wsgi.application'
+ASGI_APPLICATION = 'config.asgi.application'
+
+# Channels configuration
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    }
+}
+
+if os.environ.get('REDIS_URL'):
+    CHANNEL_LAYERS['default'] = {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [os.environ.get('REDIS_URL')],
+        },
+    }
 
 
 # Database
