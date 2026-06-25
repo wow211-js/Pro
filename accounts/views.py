@@ -17,7 +17,7 @@ from django.views.decorators.http import require_POST
 
 from .forms import ChatMessageForm, DirectMessageForm, ProfileEditForm, SignUpForm
 from .middleware import rate_limit, rate_limit_json
-from .models import CallSignal, ChatMessage, DirectMessage, UserProfile, UserBlock
+from .models import ChatMessage, DirectMessage, UserProfile, UserBlock
 
 
 def _auto_clear_chat():
@@ -621,53 +621,3 @@ def reset_e2e_keys(request):
     profile.save()
     messages.success(request, 'E2E ключи сброшены. При следующем открытии диалога создайте новые.')
     return redirect('profile')
-
-
-@login_required
-@require_POST
-def call_signal(request, username):
-    """Send a WebRTC signal to a user."""
-    from django.contrib.auth.models import User
-    try:
-        recipient = User.objects.get(username=username)
-    except User.DoesNotExist:
-        return JsonResponse({'error': 'not found'}, status=404)
-
-    data = json.loads(request.body)
-    CallSignal.objects.create(
-        sender=request.user,
-        recipient=recipient,
-        signal_type=data.get('type'),
-        payload=json.dumps(data.get('payload', {})),
-    )
-    # Cleanup old consumed signals
-    CallSignal.objects.filter(
-        recipient=request.user, consumed=True
-    ).delete()
-    return JsonResponse({'ok': True})
-
-
-@login_required
-def poll_signals(request, username):
-    """Poll for incoming WebRTC signals."""
-    from django.contrib.auth.models import User
-    try:
-        sender = User.objects.get(username=username)
-    except User.DoesNotExist:
-        return JsonResponse({'signals': []})
-
-    signals = CallSignal.objects.filter(
-        sender=sender, recipient=request.user, consumed=False
-    ).order_by('created_at')
-
-    result = []
-    for s in signals:
-        result.append({
-            'type': s.signal_type,
-            'payload': json.loads(s.payload),
-            'id': s.id,
-        })
-        s.consumed = True
-        s.save()
-
-    return JsonResponse({'signals': result})
