@@ -434,34 +434,16 @@ document.addEventListener('DOMContentLoaded', () => {
 // ─── WebRTC Video Call ────────────────────────────────────
 const STUN_SERVERS = {
     iceServers: [
-        // STUN servers (public IP discovery)
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun2.l.google.com:19302' },
-        { urls: 'stun:stun3.l.google.com:19302' },
-        { urls: 'stun:stun4.l.google.com:19302' },
-        // TURN relay servers (free public - metered.ca)
-        {
-            urls: 'turn:openrelay.metered.ca:80',
-            username: 'openrelayproject',
-            credential: 'openrelayproject',
-        },
-        {
-            urls: 'turn:openrelay.metered.ca:443',
-            username: 'openrelayproject',
-            credential: 'openrelayproject',
-        },
-        {
-            urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-            username: 'openrelayproject',
-            credential: 'openrelayproject',
-        },
+        { urls: 'stun:stun.cloudflare.com:3478' },
+        // Free TURN from Metered (public project)
+        { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
     ],
     iceCandidatePoolSize: 10,
-    bundlePolicy: 'max-bundle',
-    rtcpMuxPolicy: 'require',
-    sdpSemantics: 'unified-plan',
-};
+}
 
 let pc = null;
 let localStream = null;
@@ -491,6 +473,11 @@ async function handleSignal(signal) {
     } else if (signal.type === 'offer') {
         if (!pc) await setupPC(false);
         await pc.setRemoteDescription(new RTCSessionDescription(signal.payload));
+        // Apply queued ICE candidates
+        for (const c of (pc._pendingCandidates || [])) {
+            try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch(e) {}
+        }
+        pc._pendingCandidates = [];
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         await sendSignal('answer', answer);
@@ -502,6 +489,11 @@ async function handleSignal(signal) {
         iceCandidatesQueue = [];
     } else if (signal.type === 'answer') {
         await pc.setRemoteDescription(new RTCSessionDescription(signal.payload));
+        // Apply queued ICE candidates
+        for (const c of (pc._pendingCandidates || [])) {
+            try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch(e) {}
+        }
+        pc._pendingCandidates = [];
         // Flush queued ICE candidates
         for (const cand of iceCandidatesQueue) {
             try { await pc.addIceCandidate(new RTCIceCandidate(cand)); } catch(e) {}
@@ -526,7 +518,7 @@ async function setupPC(asCaller) {
     // Audio only with echo cancellation and noise suppression for better quality
     localStream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, sampleRate: 48000 },
-        video: false
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
     });
     localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
     // Audio output via hidden audio element (not video)
@@ -534,7 +526,16 @@ async function setupPC(asCaller) {
         const audioEl = document.getElementById('remote-audio');
         if (audioEl) audioEl.srcObject = e.streams[0];
     };
-    pc.onicecandidate = e => { if (e.candidate) sendSignal('ice', e.candidate); };
+    pc.onicecandidate = e => {
+        if (e.candidate) sendSignal('ice', e.candidate);
+    };
+    pc.onicegatheringstatechange = () => {
+        console.log('ICE gathering:', pc.iceGatheringState);
+    };
+    pc.onconnectionstatechange = () => {
+        console.log('Connection state:', pc.connectionState);
+        if (['disconnected','failed','closed'].includes(pc.connectionState)) endCall();
+    };
     pc.onconnectionstatechange = () => {
         if (pc.connectionState === 'connected') startCallTimer();
         if (['disconnected','failed','closed'].includes(pc.connectionState)) endCall();
