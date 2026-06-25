@@ -100,19 +100,21 @@
         <button onclick="rejectCall()" style="background:#ef4444;color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:700">Отклонить</button>
     </div>
 
-    <!-- Call overlay -->
-    <div id="call-overlay" style="display:none;position:fixed;inset:0;z-index:999;background:#000;flex-direction:column;align-items:center;justify-content:center;gap:12px">
-        <div id="call-status" style="color:#fff;font-size:1rem;margin-bottom:8px">Звонок</div>
-        <div style="position:relative;width:100%;max-width:800px;aspect-ratio:16/9;background:#111;border-radius:12px;overflow:hidden">
-            <video id="remote-video" autoplay playsinline style="width:100%;height:100%;object-fit:cover"></video>
-            <video id="local-video" autoplay playsinline muted style="position:absolute;bottom:12px;right:12px;width:140px;border-radius:8px;border:2px solid #fff"></video>
+    <!-- Call overlay (audio only) -->
+    <div id="call-overlay" style="display:none;position:fixed;inset:0;z-index:999;background:linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);flex-direction:column;align-items:center;justify-content:center;gap:20px">
+        <div style="width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);display:flex;align-items:center;justify-content:center;font-size:3rem">
+            {{ partner.username|first|upper }}
         </div>
-        <div style="display:flex;gap:12px;margin-top:8px">
-            <button id="mute-btn" onclick="toggleMute()" class="icon-btn" style="width:48px;height:48px;font-size:1.3rem;background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.2);color:#fff">🎤</button>
-            <button id="cam-btn" onclick="toggleCamera()" class="icon-btn" style="width:48px;height:48px;font-size:1.3rem;background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.2);color:#fff">📹</button>
-            <button onclick="endCall()" style="width:48px;height:48px;border-radius:50%;background:#ef4444;border:none;color:#fff;font-size:1.3rem;cursor:pointer">📵</button>
+        <div id="call-status" style="color:#fff;font-size:1.2rem;font-weight:600">Звонок</div>
+        <div id="call-timer" style="color:rgba(255,255,255,0.7);font-size:1rem;font-variant-numeric:tabular-nums">00:00</div>
+        <div style="display:flex;gap:16px;margin-top:16px">
+            <button id="mute-btn" onclick="toggleMute()" class="icon-btn" style="width:56px;height:56px;font-size:1.5rem;background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.3);color:#fff;border-radius:50%">🎤</button>
+            <button onclick="endCall()" style="width:56px;height:56px;border-radius:50%;background:#ef4444;border:none;color:#fff;font-size:1.5rem;cursor:pointer;display:flex;align-items:center;justify-content:center">📵</button>
         </div>
     </div>
+
+    <!-- Hidden audio element for remote stream -->
+    <audio id="remote-audio" autoplay style="display:none"></audio>
 
 </section>
 
@@ -521,14 +523,42 @@ async function handleSignal(signal) {
 async function setupPC(asCaller) {
     pc = new RTCPeerConnection(STUN_SERVERS);
     iceCandidatesQueue = [];
-    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    // Audio only with echo cancellation and noise suppression for better quality
+    localStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, sampleRate: 48000 },
+        video: false
+    });
     localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
-    document.getElementById('local-video').srcObject = localStream;
-    pc.ontrack = e => { document.getElementById('remote-video').srcObject = e.streams[0]; };
+    // Audio output via hidden audio element (not video)
+    pc.ontrack = e => {
+        const audioEl = document.getElementById('remote-audio');
+        if (audioEl) audioEl.srcObject = e.streams[0];
+    };
     pc.onicecandidate = e => { if (e.candidate) sendSignal('ice', e.candidate); };
     pc.onconnectionstatechange = () => {
+        if (pc.connectionState === 'connected') startCallTimer();
         if (['disconnected','failed','closed'].includes(pc.connectionState)) endCall();
     };
+}
+
+let callTimerInterval = null;
+let callSeconds = 0;
+function startCallTimer() {
+    if (callTimerInterval) return;
+    callSeconds = 0;
+    const timerEl = document.getElementById('call-timer');
+    callTimerInterval = setInterval(() => {
+        callSeconds++;
+        const m = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+        const s = String(callSeconds % 60).padStart(2, '0');
+        if (timerEl) timerEl.textContent = m + ':' + s;
+    }, 1000);
+}
+function stopCallTimer() {
+    if (callTimerInterval) { clearInterval(callTimerInterval); callTimerInterval = null; }
+    callSeconds = 0;
+    const timerEl = document.getElementById('call-timer');
+    if (timerEl) timerEl.textContent = '00:00';
 }
 
 window.startCall = async function() {
@@ -557,6 +587,7 @@ window.endCall = function() {
     if (pc) { pc.close(); pc = null; }
     localStream = null;
     iceCandidatesQueue = [];
+    stopCallTimer();
     if (callPollInterval) { clearInterval(callPollInterval); callPollInterval = null; }
     const overlay = getCallOverlay();
     if (overlay) overlay.style.display = 'none';
@@ -567,12 +598,6 @@ window.toggleMute = function() {
     if (!localStream) return;
     const audio = localStream.getAudioTracks()[0];
     if (audio) { audio.enabled = !audio.enabled; document.getElementById('mute-btn').textContent = audio.enabled ? '🎤' : '🔇'; }
-};
-
-window.toggleCamera = function() {
-    if (!localStream) return;
-    const video = localStream.getVideoTracks()[0];
-    if (video) { video.enabled = !video.enabled; document.getElementById('cam-btn').textContent = video.enabled ? '📹' : '📷'; }
 };
 
 function showCallOverlay(calling) {
