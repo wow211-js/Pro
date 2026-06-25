@@ -455,6 +455,8 @@ async function pollSignals() {
     for (const signal of data.signals || []) await handleSignal(signal);
 }
 
+let iceCandidatesQueue = [];
+
 async function handleSignal(signal) {
     if (signal.type === 'ring') {
         showIncomingCall();
@@ -465,10 +467,26 @@ async function handleSignal(signal) {
         await pc.setLocalDescription(answer);
         await sendSignal('answer', answer);
         showCallOverlay(false);
+        // Flush queued ICE candidates
+        for (const cand of iceCandidatesQueue) {
+            try { await pc.addIceCandidate(new RTCIceCandidate(cand)); } catch(e) {}
+        }
+        iceCandidatesQueue = [];
     } else if (signal.type === 'answer') {
         await pc.setRemoteDescription(new RTCSessionDescription(signal.payload));
+        // Flush queued ICE candidates
+        for (const cand of iceCandidatesQueue) {
+            try { await pc.addIceCandidate(new RTCIceCandidate(cand)); } catch(e) {}
+        }
+        iceCandidatesQueue = [];
     } else if (signal.type === 'ice') {
-        if (pc && signal.payload) await pc.addIceCandidate(new RTCIceCandidate(signal.payload));
+        if (pc && signal.payload) {
+            if (pc.remoteDescription) {
+                await pc.addIceCandidate(new RTCIceCandidate(signal.payload));
+            } else {
+                iceCandidatesQueue.push(signal.payload);
+            }
+        }
     } else if (signal.type === 'hangup') {
         endCall();
     }
@@ -476,6 +494,7 @@ async function handleSignal(signal) {
 
 async function setupPC(asCaller) {
     pc = new RTCPeerConnection(STUN_SERVERS);
+    iceCandidatesQueue = [];
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
     localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
     document.getElementById('local-video').srcObject = localStream;
@@ -511,6 +530,7 @@ window.endCall = function() {
     if (localStream) localStream.getTracks().forEach(t => t.stop());
     if (pc) { pc.close(); pc = null; }
     localStream = null;
+    iceCandidatesQueue = [];
     if (callPollInterval) { clearInterval(callPollInterval); callPollInterval = null; }
     const overlay = getCallOverlay();
     if (overlay) overlay.style.display = 'none';
