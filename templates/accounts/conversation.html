@@ -4,119 +4,77 @@
 {% block content %}
 <section class="wide-panel dm-panel">
     <div class="dm-conv-header">
-        <a href="{% url 'inbox' %}" class="back-link">← Назад</a>
+        <a href="{% url 'inbox' %}" class="back-link">&#8592; Назад</a>
         <div class="dm-avatar">{{ partner.username|first|upper }}</div>
         <strong>{{ partner.username }}</strong>
-        <span id="e2e-status" class="e2e-badge e2e-loading" style="cursor:pointer" onclick="toggleFingerprints()" title="Нажмите для проверки ключей">🔒 …</span>
+        <span id="e2e-status" class="e2e-badge e2e-loading" style="cursor:pointer" onclick="toggleFingerprints()" title="Проверка ключей">&#128274; &#8230;</span>
         <div style="margin-left:auto;display:flex;gap:8px">
-            <button onclick="startCall()" id="call-btn" class="icon-btn" title="Звонок">📞</button>
             {% if is_blocked_by_me %}
-                <form method="post" action="{% url 'unblock_user' partner.username %}">
-                    {% csrf_token %}
-                    <button type="submit" class="secondary" style="font-size:0.85rem;padding:6px 12px" title="Разблокировать">🔓</button>
+                <form method="post" action="{% url 'unblock_user' partner.username %}">{% csrf_token %}
+                    <button type="submit" class="icon-btn" title="Разблокировать">&#128275;</button>
                 </form>
             {% else %}
-                <form method="post" action="{% url 'block_user' partner.username %}" onsubmit="return confirm('Заблокировать @{{ partner.username }}?')">
-                    {% csrf_token %}
-                    <button type="submit" class="secondary" style="font-size:0.85rem;padding:6px 12px" title="Заблокировать">🚫</button>
+                <form method="post" action="{% url 'block_user' partner.username %}" onsubmit="return confirm('Заблокировать?')">{% csrf_token %}
+                    <button type="submit" class="icon-btn" title="Заблокировать">&#128683;</button>
                 </form>
             {% endif %}
-            <form method="post" action="{% url 'delete_conversation' partner.username %}" onsubmit="return confirm('Удалить весь диалог?')">
-                {% csrf_token %}
-                <button type="submit" class="secondary" style="font-size:0.85rem;padding:6px 12px" title="Удалить диалог">🗑</button>
+            <form method="post" action="{% url 'delete_conversation' partner.username %}" onsubmit="return confirm('Удалить диалог?')">{% csrf_token %}
+                <button type="submit" class="icon-btn" title="Удалить диалог">&#128465;</button>
             </form>
         </div>
     </div>
 
-    {# Fingerprint panel #}
     <div id="fp-panel" class="e2e-unlock-panel" style="display:none">
-        <p><strong>🔍 Проверка ключей</strong> — сравните отпечатки через другой канал</p>
+        <p><strong>&#128269; Проверка ключей</strong> — сравните отпечатки через другой канал</p>
         <div style="display:grid;gap:10px;margin-top:12px">
             <div><div class="fp-label">Ваш отпечаток (@{{ user.username }}):</div><code id="my-fp" class="fp-code">вычисление...</code></div>
             <div><div class="fp-label">Отпечаток @{{ partner.username }}:</div><code id="partner-fp" class="fp-code">вычисление...</code></div>
         </div>
-        <p class="muted" style="margin-top:12px;font-size:0.85rem">✅ Совпадают — переписка защищена. ❌ Не совпадают — возможна атака MITM.</p>
+        <p class="muted" style="margin-top:12px;font-size:0.85rem">&#9989; Совпадают — защищено. &#10060; Не совпадают — возможна атака MITM.</p>
         <button onclick="toggleFingerprints()" class="secondary" style="margin-top:8px">Закрыть</button>
     </div>
 
-    {# Unlock panel #}
     <div id="e2e-unlock" class="e2e-unlock-panel" style="display:none">
-        <p id="unlock-label">Введите пароль от аккаунта чтобы разблокировать шифрование:</p>
+        <p id="unlock-label">Введите пароль от аккаунта:</p>
         <div style="display:flex;gap:8px">
             <input type="password" id="unlock-passphrase" placeholder="Пароль от аккаунта" class="e2e-input">
             <button onclick="unlockE2E()" class="button-link" style="white-space:nowrap">Разблокировать</button>
         </div>
-        <p class="muted" style="margin-top:8px;font-size:0.85rem">
-            <label style="cursor:pointer;text-decoration:underline">
-                <input type="file" id="key-import" style="display:none" onchange="uploadKeyBackup(this)" accept=".json">
-                📂 Загрузить резервную копию ключей
-            </label>
-        </p>
     </div>
 
     <div class="chat-list dm-messages" id="dm-list">
-        {% for msg in msgs %}
-            {% if not msg.is_deleted %}
-            <div class="dm-msg {% if msg.sender == user %}dm-msg-out{% else %}dm-msg-in{% endif %}"
-                 data-cipher="{{ msg.text }}" data-id="{{ msg.id }}">
-                <p class="msg-text">🔒 Зашифровано</p>
-                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-                    <time>{{ msg.created_at|date:'d.m H:i' }}{% if msg.is_edited %} (изм.){% endif %}</time>
-                    <span style="display:flex;gap:4px">
-                        <button onclick="replyTo({{ msg.id }}, '{{ msg.sender.username }}')" class="msg-action-btn" title="Ответить">↩</button>
-                        {% if msg.sender == user %}
-                        <button onclick="editMessage({{ msg.id }})" class="msg-action-btn" title="Редактировать">✎</button>
-                        <button onclick="deleteMessage({{ msg.id }})" class="msg-action-btn" title="Удалить">✕</button>
-                        {% endif %}
-                    </span>
-                </div>
+        {% for msg in msgs %}{% if not msg.is_deleted %}
+        <div class="dm-msg {% if msg.sender == user %}dm-msg-out{% else %}dm-msg-in{% endif %}" data-cipher="{{ msg.text }}" data-id="{{ msg.id }}">
+            <p class="msg-text">&#128274; Зашифровано</p>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                <time>{{ msg.created_at|date:'d.m H:i' }}{% if msg.is_edited %} (изм.){% endif %}{% if msg.sender == user %} <span class="msg-status" id="status-{{ msg.id }}">{% if msg.is_read %}&#10003;&#10003;{% elif msg.is_delivered %}&#10003;{% endif %}</span>{% endif %}</time>
+                <span style="display:flex;gap:4px">
+                    <button onclick="replyTo({{ msg.id }},'{{ msg.sender.username }}')" class="msg-action-btn" title="Ответить">&#8629;</button>
+                    {% if msg.sender == user %}
+                    <button onclick="editMessage({{ msg.id }})" class="msg-action-btn" title="Редактировать">&#9998;</button>
+                    <button onclick="deleteMessage({{ msg.id }})" class="msg-action-btn" title="Удалить">&#10005;</button>
+                    {% endif %}
+                </span>
             </div>
-            {% endif %}
-        {% empty %}
-            <p class="empty-chat">Начните диалог!</p>
-        {% endfor %}
+        </div>
+        {% endif %}{% empty %}<p class="empty-chat">Начните диалог!</p>{% endfor %}
     </div>
 
     {% if is_blocked_by_them %}
-        <div class="e2e-unlock-panel" style="text-align:center;color:var(--text-muted)">🚫 Вы заблокированы этим пользователем</div>
+        <div class="e2e-unlock-panel" style="text-align:center;color:var(--text-muted)">&#128683; Вы заблокированы</div>
     {% elif is_blocked_by_me %}
-        <div class="e2e-unlock-panel" style="text-align:center;color:var(--text-muted)">🚫 Вы заблокировали этого пользователя — отправка недоступна</div>
+        <div class="e2e-unlock-panel" style="text-align:center;color:var(--text-muted)">&#128683; Вы заблокировали пользователя</div>
     {% else %}
     <form id="dm-form" class="chat-form" onsubmit="sendEncrypted(event)">
         {% csrf_token %}
         <div id="reply-indicator" style="display:none;padding:6px 10px;justify-content:space-between;align-items:center;background:var(--bg-code);border-left:3px solid var(--accent);border-radius:4px;margin-bottom:6px;font-size:0.85rem;color:var(--text-muted)">
             <span id="reply-text"></span>
-            <button onclick="cancelReply()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);padding:0 4px;font-size:1rem;line-height:1">✕</button>
+            <button type="button" onclick="cancelReply()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);padding:0 4px">&#10005;</button>
         </div>
-        <textarea id="msg-input" rows="2" placeholder="Написать сообщение..."
-            style="width:100%;border:1px solid var(--input-border);border-radius:8px;padding:12px 14px;font:inherit;background:var(--bg-input);color:var(--text);resize:vertical"></textarea>
+        <textarea id="msg-input" rows="2" placeholder="Написать сообщение..." style="width:100%;border:1px solid var(--input-border);border-radius:8px;padding:12px 14px;font:inherit;background:var(--bg-input);color:var(--text);resize:vertical"></textarea>
         <button type="submit">Отправить</button>
     </form>
     {% endif %}
-
-    <!-- Incoming call notification -->
-    <div id="incoming-call" style="display:none;position:fixed;top:20px;right:20px;z-index:1000;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;box-shadow:var(--shadow);align-items:center;gap:12px">
-        <span>📞 Входящий звонок от <strong>{{ partner.username }}</strong></span>
-        <button onclick="acceptCall()" style="background:#22c55e;color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:700">Принять</button>
-        <button onclick="rejectCall()" style="background:#ef4444;color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:700">Отклонить</button>
-    </div>
-
-    <!-- Call overlay (audio only) -->
-    <div id="call-overlay" style="display:none;position:fixed;inset:0;z-index:999;background:linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);flex-direction:column;align-items:center;justify-content:center;gap:20px">
-        <div style="width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);display:flex;align-items:center;justify-content:center;font-size:3rem">
-            {{ partner.username|first|upper }}
-        </div>
-        <div id="call-status" style="color:#fff;font-size:1.2rem;font-weight:600">Звонок</div>
-        <div id="call-timer" style="color:rgba(255,255,255,0.7);font-size:1rem;font-variant-numeric:tabular-nums">00:00</div>
-        <div style="display:flex;gap:16px;margin-top:16px">
-            <button id="mute-btn" onclick="toggleMute()" class="icon-btn" style="width:56px;height:56px;font-size:1.5rem;background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.3);color:#fff;border-radius:50%">🎤</button>
-            <button onclick="endCall()" style="width:56px;height:56px;border-radius:50%;background:#ef4444;border:none;color:#fff;font-size:1.5rem;cursor:pointer;display:flex;align-items:center;justify-content:center">📵</button>
-        </div>
-    </div>
-
-    <!-- Hidden audio element for remote stream -->
-    <audio id="remote-audio" autoplay style="display:none"></audio>
-
 </section>
 
 <script src="{% static 'js/openpgp.min.js' %}"></script>
@@ -131,152 +89,34 @@ var lastMessageId = 0;
 var pollInterval = null;
 var replyToId = null;
 
-// ── Global UI functions (called from onclick) ──
-window.toggleFingerprints = function() {
+function toggleFingerprints() {
     var p = document.getElementById('fp-panel');
     p.style.display = p.style.display === 'none' ? 'block' : 'none';
-};
+}
 
-window.cancelReply = function() {
+function cancelReply() {
     replyToId = null;
     document.getElementById('reply-indicator').style.display = 'none';
-};
+}
 
-window.replyTo = function(msgId, senderName) {
+function replyTo(msgId, senderName) {
     replyToId = msgId;
-    document.getElementById('reply-text').textContent = '\u21A9 ' + senderName;
+    document.getElementById('reply-text').textContent = '\u21a9 ' + senderName;
     document.getElementById('reply-indicator').style.display = 'flex';
     document.getElementById('msg-input').focus();
-};
+}
 
-window.uploadKeyBackup = function(input) {
-    var file = input.files[0];
-    if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            var data = JSON.parse(e.target.result);
-            if (!data.passphrase || !data.encrypted_private_key) return alert('Неверный файл резервной копии');
-            E2E.storeSession(data.encrypted_private_key, data.passphrase);
-            alert('\u2705 Ключи загружены. Перезагрузите страницу для применения.');
-        } catch(err) { alert('Ошибка чтения файла: ' + err.message); }
-    };
-    reader.readAsText(file);
-};
+function setStatus(text, cls) {
+    var el = document.getElementById('e2e-status');
+    el.textContent = text;
+    el.className = 'e2e-badge ' + cls;
+}
 
-window.unlockE2E = async function() {
-    var passphrase = document.getElementById('unlock-passphrase').value;
-    if (!passphrase) return alert('Введите пароль');
-    setStatus('\u23F3 …', 'e2e-loading');
-    var resp = await fetch('/api/keys/' + MY_USERNAME + '/');
-    var data = await resp.json();
-    if (!data.public_key) {
-        try {
-            var keys = await E2E.generateKeys(MY_USERNAME, passphrase);
-            await E2E.saveKeys(keys.publicKey, keys.privateKey);
-            E2E.storeSession(keys.privateKey, passphrase);
-            myPublicKey = keys.publicKey;
-            partnerPublicKey = await E2E.getPublicKey(PARTNER);
-            await showFingerprints();
-            document.getElementById('e2e-unlock').style.display = 'none';
-            setStatus('\uD83D\uDD12 E2E \u2713', 'e2e-ok');
-            startPolling();
-        } catch(e) { setStatus('\u274C Ошибка', 'e2e-warn'); alert('Ошибка: ' + e.message); }
-    } else {
-        myPublicKey = data.public_key;
-        E2E.storeSession(data.encrypted_private_key, passphrase);
-        document.getElementById('e2e-unlock').style.display = 'none';
-        setStatus('\uD83D\uDD12 E2E \u2713', 'e2e-ok');
-        await decryptAll(data.encrypted_private_key, passphrase);
-        startPolling();
-    }
-};
-
-window.editMessage = async function(msgId) {
-    var el = document.querySelector('.dm-msg[data-id="' + msgId + '"]');
-    if (!el) return;
-    var session = E2E.getSession();
-    var current = '';
-    if (el.dataset.cipher.indexOf('BEGIN PGP') !== -1 && session.passphrase)
-        current = await E2E.decrypt(el.dataset.cipher, session.privateKey, session.passphrase);
-    var lines = current.split('\n');
-    var quoteEnd = 0;
-    var i;
-    for (i = 0; i < lines.length; i++) {
-        if (lines[i].indexOf('> ') === 0) { quoteEnd = i + 1; }
-        else if (lines[i] === '' && quoteEnd === i) { quoteEnd = i + 1; }
-        else break;
-    }
-    var editableLines = [];
-    for (i = quoteEnd; i < lines.length; i++) editableLines.push(lines[i]);
-    var editableText = editableLines.join('\n').trim();
-    var quoteLines = [];
-    for (i = 0; i < quoteEnd; i++) quoteLines.push(lines[i]);
-    var quotePrefix = quoteLines.join('\n');
-    var newText = prompt('Редактировать сообщение:', editableText);
-    if (!newText || newText === editableText) return;
-    var fullText = quotePrefix ? quotePrefix + '\n\n' + newText : newText;
-    var pKey = partnerPublicKey || await E2E.getPublicKey(PARTNER);
-    var encrypted = await E2E.encrypt(fullText, pKey, myPublicKey);
-    var resp = await fetch('/messages/' + PARTNER + '/edit/' + msgId + '/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': CSRF },
-        body: 'text=' + encodeURIComponent(encrypted),
-    });
-    var d = await resp.json();
-    if (d.ok) { el.dataset.cipher = encrypted; el.querySelector('.msg-text').innerHTML = renderText(fullText); }
-    else alert('Ошибка: ' + (d.error || 'неизвестно'));
-};
-
-window.deleteMessage = async function(msgId) {
-    if (!confirm('Удалить сообщение?')) return;
-    var resp = await fetch('/messages/' + PARTNER + '/delete/' + msgId + '/', {
-        method: 'POST', headers: { 'X-CSRFToken': CSRF },
-    });
-    var d = await resp.json();
-    if (d.ok) { var el = document.querySelector('.dm-msg[data-id="' + msgId + '"]'); if (el) el.remove(); }
-    else alert('Ошибка: ' + (d.error || 'неизвестно'));
-};
-
-window.sendEncrypted = async function(e) {
-    e.preventDefault();
-    var text = document.getElementById('msg-input').value.trim();
-    if (!text) return;
-    var session = E2E.getSession();
-    if (!session.passphrase) { document.getElementById('e2e-unlock').style.display = 'block'; return alert('Сначала разблокируйте шифрование'); }
-    var pKey = partnerPublicKey || await E2E.getPublicKey(PARTNER);
-    if (!pKey) return alert('У собеседника нет ключей. Пусть сначала откроет любой диалог.');
-    if (replyToId) {
-        var replyEl = document.querySelector('.dm-msg[data-id="' + replyToId + '"]');
-        var quotedName = document.getElementById('reply-text').textContent.replace('\u21A9 ', '');
-        var quotedText = '';
-        if (replyEl) {
-            var msgTextEl = replyEl.querySelector('.msg-text');
-            if (msgTextEl) quotedText = msgTextEl.textContent || '';
-        }
-        if (quotedText.length > 60) quotedText = quotedText.slice(0, 60) + '\u2026';
-        text = '> ' + quotedName + ': ' + quotedText + '\n\n' + text;
-        window.cancelReply();
-    }
-    var encrypted = await E2E.encrypt(text, pKey, myPublicKey);
-    var resp = await fetch(window.location.pathname, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': CSRF },
-        body: 'text=' + encodeURIComponent(encrypted),
-    });
-    if (resp.ok || resp.redirected) {
-        document.getElementById('msg-input').value = '';
-        await pollNewMessages();
-    }
-};
-
-// ── Internal functions ──
 function renderText(plain) {
     var lines = plain.split('\n');
     var result = [];
     var lastWasQuote = false;
-    var i;
-    for (i = 0; i < lines.length; i++) {
+    for (var i = 0; i < lines.length; i++) {
         var line = lines[i];
         if (line.indexOf('> ') === 0) {
             result.push('<span class="msg-quote">' + line.slice(2).replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</span>');
@@ -291,28 +131,22 @@ function renderText(plain) {
     return result.join('<br>');
 }
 
-function setStatus(text, cls) {
-    var el = document.getElementById('e2e-status');
-    el.textContent = text; el.className = 'e2e-badge ' + cls;
-}
-
 async function showFingerprints() {
     if (myPublicKey) {
         var fp = await E2E.getFingerprint(myPublicKey);
-        document.getElementById('my-fp').textContent = fp || '\u2014';
+        document.getElementById('my-fp').textContent = fp || '—';
     }
     if (partnerPublicKey) {
-        var fp = await E2E.getFingerprint(partnerPublicKey);
-        document.getElementById('partner-fp').textContent = fp || '\u2014';
+        var fp2 = await E2E.getFingerprint(partnerPublicKey);
+        document.getElementById('partner-fp').textContent = fp2 || '—';
     } else {
-        document.getElementById('partner-fp').textContent = '\u0443 \u0441\u043E\u0431\u0435\u0441\u0435\u0434\u043D\u0438\u043A\u0430 \u043D\u0435\u0442 \u043A\u043B\u044E\u0447\u0435\u0439';
+        document.getElementById('partner-fp').textContent = 'у собеседника нет ключей';
     }
 }
 
 async function decryptAll(encPrivKey, passphrase) {
     var msgs = document.querySelectorAll('.dm-msg[data-cipher]');
-    var i;
-    for (i = 0; i < msgs.length; i++) {
+    for (var i = 0; i < msgs.length; i++) {
         var el = msgs[i];
         var cipher = el.dataset.cipher;
         if (!cipher || cipher.indexOf('BEGIN PGP') === -1) continue;
@@ -321,16 +155,117 @@ async function decryptAll(encPrivKey, passphrase) {
     }
 }
 
+async function unlockE2E() {
+    var passphrase = document.getElementById('unlock-passphrase').value;
+    if (!passphrase) { alert('Введите пароль'); return; }
+    setStatus('\u23f3 \u2026', 'e2e-loading');
+    var resp = await fetch('/api/keys/' + MY_USERNAME + '/');
+    var data = await resp.json();
+    if (!data.public_key) {
+        try {
+            var keys = await E2E.generateKeys(MY_USERNAME, passphrase);
+            await E2E.saveKeys(keys.publicKey, keys.privateKey);
+            E2E.storeSession(keys.privateKey, passphrase);
+            myPublicKey = keys.publicKey;
+            partnerPublicKey = await E2E.getPublicKey(PARTNER);
+            await showFingerprints();
+            document.getElementById('e2e-unlock').style.display = 'none';
+            setStatus('\ud83d\udd12 E2E \u2713', 'e2e-ok');
+            startPolling();
+        } catch(e) {
+            setStatus('\u274c \u041e\u0448\u0438\u0431\u043a\u0430', 'e2e-warn');
+            alert('\u041e\u0448\u0438\u0431\u043a\u0430: ' + e.message);
+        }
+    } else {
+        myPublicKey = data.public_key;
+        E2E.storeSession(data.encrypted_private_key, passphrase);
+        document.getElementById('e2e-unlock').style.display = 'none';
+        setStatus('\ud83d\udd12 E2E \u2713', 'e2e-ok');
+        await decryptAll(data.encrypted_private_key, passphrase);
+        partnerPublicKey = await E2E.getPublicKey(PARTNER);
+        await showFingerprints();
+        startPolling();
+    }
+}
+
+async function sendEncrypted(e) {
+    e.preventDefault();
+    var text = document.getElementById('msg-input').value.trim();
+    if (!text) return;
+    var session = E2E.getSession();
+    if (!session.passphrase) {
+        document.getElementById('e2e-unlock').style.display = 'block';
+        alert('Сначала разблокируйте шифрование');
+        return;
+    }
+    var pKey = partnerPublicKey || await E2E.getPublicKey(PARTNER);
+    if (!pKey) { alert('У собеседника нет ключей.'); return; }
+    if (replyToId) {
+        var replyEl = document.querySelector('.dm-msg[data-id="' + replyToId + '"]');
+        var quotedName = document.getElementById('reply-text').textContent.replace('\u21a9 ', '');
+        var quotedText = replyEl ? (replyEl.querySelector('.msg-text').textContent || '') : '';
+        if (quotedText.length > 60) quotedText = quotedText.slice(0, 60) + '\u2026';
+        text = '> ' + quotedName + ': ' + quotedText + '\n\n' + text;
+        cancelReply();
+    }
+    var encrypted = await E2E.encrypt(text, pKey, myPublicKey);
+    var resp = await fetch(window.location.pathname, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': CSRF },
+        body: 'text=' + encodeURIComponent(encrypted),
+    });
+    if (resp.ok || resp.redirected) {
+        document.getElementById('msg-input').value = '';
+        await pollNewMessages();
+    }
+}
+
+async function editMessage(msgId) {
+    var el = document.querySelector('.dm-msg[data-id="' + msgId + '"]');
+    if (!el) return;
+    var session = E2E.getSession();
+    var current = '';
+    if (el.dataset.cipher.indexOf('BEGIN PGP') !== -1 && session.passphrase)
+        current = await E2E.decrypt(el.dataset.cipher, session.privateKey, session.passphrase);
+    var lines = current.split('\n');
+    var quoteEnd = 0;
+    for (var i = 0; i < lines.length; i++) {
+        if (lines[i].indexOf('> ') === 0) { quoteEnd = i + 1; }
+        else if (lines[i] === '' && quoteEnd === i) { quoteEnd = i + 1; }
+        else break;
+    }
+    var editableText = lines.slice(quoteEnd).join('\n').trim();
+    var quotePrefix = lines.slice(0, quoteEnd).join('\n');
+    var newText = prompt('Редактировать:', editableText);
+    if (!newText || newText === editableText) return;
+    var fullText = quotePrefix ? quotePrefix + '\n\n' + newText : newText;
+    var pKey = partnerPublicKey || await E2E.getPublicKey(PARTNER);
+    var encrypted = await E2E.encrypt(fullText, pKey, myPublicKey);
+    var resp = await fetch('/messages/' + PARTNER + '/edit/' + msgId + '/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': CSRF },
+        body: 'text=' + encodeURIComponent(encrypted),
+    });
+    var d = await resp.json();
+    if (d.ok) { el.dataset.cipher = encrypted; el.querySelector('.msg-text').innerHTML = renderText(fullText); }
+    else alert('Ошибка: ' + (d.error || 'неизвестно'));
+}
+
+async function deleteMessage(msgId) {
+    if (!confirm('Удалить сообщение?')) return;
+    var resp = await fetch('/messages/' + PARTNER + '/delete/' + msgId + '/', {
+        method: 'POST', headers: { 'X-CSRFToken': CSRF },
+    });
+    var d = await resp.json();
+    if (d.ok) { var el = document.querySelector('.dm-msg[data-id="' + msgId + '"]'); if (el) el.remove(); }
+    else alert('Ошибка: ' + (d.error || 'неизвестно'));
+}
+
 function startPolling() {
     if (pollInterval) return;
     var msgs = document.querySelectorAll('.dm-msg[data-id]');
     if (msgs.length) {
-        var ids = [];
-        var i;
-        for (i = 0; i < msgs.length; i++) {
-            var id = parseInt(msgs[i].dataset.id) || 0;
-            ids.push(id);
-        }
+        var ids = Array.prototype.map.call(msgs, function(el) { return parseInt(el.dataset.id) || 0; });
         lastMessageId = Math.max.apply(null, ids);
     }
     pollInterval = setInterval(function() { pollNewMessages(); pollStatuses(); }, 3000);
@@ -347,8 +282,7 @@ async function pollNewMessages() {
         var wasAtBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
         var empty = list.querySelector('.empty-chat');
         if (empty) empty.remove();
-        var i;
-        for (i = 0; i < data.messages.length; i++) {
+        for (var i = 0; i < data.messages.length; i++) {
             var msg = data.messages[i];
             lastMessageId = Math.max(lastMessageId, msg.id);
             var div = document.createElement('div');
@@ -356,15 +290,12 @@ async function pollNewMessages() {
             div.dataset.cipher = msg.text;
             div.dataset.id = msg.id;
             var plain = msg.text;
-            if (msg.text.indexOf('BEGIN PGP') !== -1) plain = await E2E.decrypt(msg.text, session.privateKey, session.passphrase);
-            var statusHtml = '';
-            if (msg.is_mine) statusHtml = ' <span class="msg-status" id="status-' + msg.id + '">\u2713</span>';
-            var actionHtml = '<button onclick="replyTo(' + msg.id + ',\'' + (msg.is_mine ? MY_USERNAME : PARTNER) + '\')" class="msg-action-btn" title="Ответить">\u21A9</button>';
-            if (msg.is_mine) {
-                actionHtml += '<button onclick="editMessage(' + msg.id + ')" class="msg-action-btn" title="Редактировать">\u270E</button>';
-                actionHtml += '<button onclick="deleteMessage(' + msg.id + ')" class="msg-action-btn" title="Удалить">\u2715</button>';
-            }
-            div.innerHTML = '<p class="msg-text">' + renderText(plain) + '</p><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><time>' + msg.created_at + statusHtml + '</time><span style="display:flex;gap:4px">' + actionHtml + '</span></div>';
+            if (msg.text.indexOf('BEGIN PGP') !== -1)
+                plain = await E2E.decrypt(msg.text, session.privateKey, session.passphrase);
+            var statusHtml = msg.is_mine ? ' <span class="msg-status" id="status-' + msg.id + '">\u2713</span>' : '';
+            var actionsHtml = '<button onclick="replyTo(' + msg.id + ',\'' + (msg.is_mine ? MY_USERNAME : PARTNER) + '\')" class="msg-action-btn" title="Ответить">\u21a9</button>';
+            if (msg.is_mine) actionsHtml += '<button onclick="editMessage(' + msg.id + ')" class="msg-action-btn" title="Редактировать">\u270e</button><button onclick="deleteMessage(' + msg.id + ')" class="msg-action-btn" title="Удалить">\u2715</button>';
+            div.innerHTML = '<p class="msg-text">' + renderText(plain) + '</p><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><time>' + msg.created_at + statusHtml + '</time><span style="display:flex;gap:4px">' + actionsHtml + '</span></div>';
             list.appendChild(div);
         }
         if (wasAtBottom) list.scrollTop = list.scrollHeight;
@@ -375,10 +306,9 @@ async function pollStatuses() {
     try {
         var resp = await fetch('/api/messages/' + PARTNER + '/status/');
         var data = await resp.json();
-        var statuses = data.statuses || [];
-        var i;
-        for (i = 0; i < statuses.length; i++) {
-            var s = statuses[i];
+        if (!data.statuses) return;
+        for (var i = 0; i < data.statuses.length; i++) {
+            var s = data.statuses[i];
             var el = document.getElementById('status-' + s.id);
             if (el) el.textContent = s.is_read ? '\u2713\u2713' : '\u2713';
         }
@@ -389,9 +319,9 @@ async function init() {
     var resp = await fetch('/api/keys/' + MY_USERNAME + '/');
     var data = await resp.json();
     if (!data.public_key) {
-        document.getElementById('unlock-label').textContent = '\u041F\u0435\u0440\u0432\u044B\u0439 \u0432\u0445\u043E\u0434: \u0432\u0432\u0435\u0434\u0438\u0442\u0435 \u043F\u0430\u0440\u043E\u043B\u044C \u043E\u0442 \u0430\u043A\u043A\u0430\u0443\u043D\u0442\u0430 \u0434\u043B\u044F \u0441\u043E\u0437\u0434\u0430\u043D\u0438\u044F \u043A\u043B\u044E\u0447\u0435\u0439:';
+        document.getElementById('unlock-label').textContent = 'Первый вход: введите пароль для создания ключей:';
         document.getElementById('e2e-unlock').style.display = 'block';
-        setStatus('\u26A0\uFE0F \u041D\u0435\u0442 \u043A\u043B\u044E\u0447\u0435\u0439', 'e2e-warn');
+        setStatus('\u26a0\ufe0f \u041d\u0435\u0442 \u043a\u043b\u044e\u0447\u0435\u0439', 'e2e-warn');
         return;
     }
     myPublicKey = data.public_key;
@@ -400,188 +330,14 @@ async function init() {
     var session = E2E.getSession();
     if (session.passphrase && session.privateKey) {
         await decryptAll(session.privateKey, session.passphrase);
-        setStatus('\uD83D\uDD12 E2E \u2713', 'e2e-ok');
+        setStatus('\ud83d\udd12 E2E \u2713', 'e2e-ok');
         startPolling();
     } else {
         document.getElementById('e2e-unlock').style.display = 'block';
-        setStatus('\uD83D\uDD11 \u0417\u0430\u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0430\u043D\u043E', 'e2e-warn');
+        setStatus('\ud83d\udd11 \u0417\u0430\u0431\u043b\u043e\u043a\u0438\u0440\u043e\u0432\u0430\u043d\u043e', 'e2e-warn');
     }
 }
 
-// ─── WebRTC Audio Call (WebSocket signaling) ─────────────────
-var STUN_SERVERS = {
-    iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun2.l.google.com:19302' },
-        { urls: 'stun:stun3.l.google.com:19302' },
-        { urls: 'stun:stun4.l.google.com:19302' },
-        { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-        { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-        { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
-    ],
-    iceCandidatePoolSize: 10,
-    bundlePolicy: 'max-bundle',
-    rtcpMuxPolicy: 'require',
-};
-
-var pc = null;
-var localStream = null;
-var callWs = null;
-var iceCandidatesQueue = [];
-var callTimerInterval = null;
-var callSeconds = 0;
-
-function getCallOverlay() { return document.getElementById('call-overlay'); }
-
-function connectCallWs() {
-    if (callWs && callWs.readyState === WebSocket.OPEN) return;
-    var wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    callWs = new WebSocket(wsProto + '//' + location.host + '/ws/call/' + PARTNER + '/');
-    callWs.onmessage = function(event) {
-        var signal = JSON.parse(event.data);
-        handleSignal(signal);
-    };
-    callWs.onclose = function() { callWs = null; };
-}
-
-function sendSignal(type, payload) {
-    if (!callWs || callWs.readyState !== WebSocket.OPEN) connectCallWs();
-    if (callWs && callWs.readyState === WebSocket.OPEN) {
-        callWs.send(JSON.stringify({ type: type, payload: payload }));
-    }
-}
-
-async function handleSignal(signal) {
-    if (signal.type === 'ring') {
-        showIncomingCall();
-    } else if (signal.type === 'offer') {
-        if (!pc) await setupPC(false);
-        await pc.setRemoteDescription(new RTCSessionDescription(signal.payload));
-        var answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        sendSignal('answer', answer);
-        showCallOverlay(false);
-        var i;
-        for (i = 0; i < iceCandidatesQueue.length; i++) {
-            try { await pc.addIceCandidate(new RTCIceCandidate(iceCandidatesQueue[i])); } catch(e) {}
-        }
-        iceCandidatesQueue = [];
-    } else if (signal.type === 'answer') {
-        await pc.setRemoteDescription(new RTCSessionDescription(signal.payload));
-        var i;
-        for (i = 0; i < iceCandidatesQueue.length; i++) {
-            try { await pc.addIceCandidate(new RTCIceCandidate(iceCandidatesQueue[i])); } catch(e) {}
-        }
-        iceCandidatesQueue = [];
-    } else if (signal.type === 'ice') {
-        if (pc && signal.payload) {
-            if (pc.remoteDescription) {
-                await pc.addIceCandidate(new RTCIceCandidate(signal.payload));
-            } else {
-                iceCandidatesQueue.push(signal.payload);
-            }
-        }
-    } else if (signal.type === 'hangup') {
-        endCall();
-    }
-}
-
-async function setupPC(asCaller) {
-    pc = new RTCPeerConnection(STUN_SERVERS);
-    iceCandidatesQueue = [];
-    localStream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, sampleRate: 48000 },
-        video: false
-    });
-    var i;
-    for (i = 0; i < localStream.getTracks().length; i++) {
-        pc.addTrack(localStream.getTracks()[i], localStream);
-    }
-    pc.ontrack = function(e) {
-        var audioEl = document.getElementById('remote-audio');
-        if (audioEl) audioEl.srcObject = e.streams[0];
-    };
-    pc.onicecandidate = function(e) { if (e.candidate) sendSignal('ice', e.candidate); };
-    pc.onconnectionstatechange = function() {
-        if (pc.connectionState === 'connected') startCallTimer();
-        if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed') endCall();
-    };
-}
-
-function startCallTimer() {
-    if (callTimerInterval) return;
-    callSeconds = 0;
-    var timerEl = document.getElementById('call-timer');
-    callTimerInterval = setInterval(function() {
-        callSeconds++;
-        var m = String(Math.floor(callSeconds / 60)).padStart(2, '0');
-        var s = String(callSeconds % 60).padStart(2, '0');
-        if (timerEl) timerEl.textContent = m + ':' + s;
-    }, 1000);
-}
-
-function stopCallTimer() {
-    if (callTimerInterval) { clearInterval(callTimerInterval); callTimerInterval = null; }
-    callSeconds = 0;
-    var timerEl = document.getElementById('call-timer');
-    if (timerEl) timerEl.textContent = '00:00';
-}
-
-window.startCall = async function() {
-    if (pc) return;
-    connectCallWs();
-    await setupPC(true);
-    var offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    sendSignal('ring', {});
-    sendSignal('offer', offer);
-    showCallOverlay(true);
-};
-
-window.acceptCall = async function() {
-    document.getElementById('incoming-call').style.display = 'none';
-    connectCallWs();
-};
-
-window.rejectCall = function() {
-    document.getElementById('incoming-call').style.display = 'none';
-    sendSignal('hangup', {});
-    if (callWs) { callWs.close(); callWs = null; }
-};
-
-window.endCall = function() {
-    if (localStream) {
-        var i;
-        for (i = 0; i < localStream.getTracks().length; i++) { localStream.getTracks()[i].stop(); }
-    }
-    if (pc) { pc.close(); pc = null; }
-    localStream = null;
-    iceCandidatesQueue = [];
-    stopCallTimer();
-    if (callWs) { callWs.close(); callWs = null; }
-    var overlay = getCallOverlay();
-    if (overlay) overlay.style.display = 'none';
-    document.getElementById('incoming-call').style.display = 'none';
-};
-
-window.toggleMute = function() {
-    if (!localStream) return;
-    var audio = localStream.getAudioTracks()[0];
-    if (audio) { audio.enabled = !audio.enabled; document.getElementById('mute-btn').textContent = audio.enabled ? '\uD83C\uDFA4' : '\uD83D\uDD07'; }
-};
-
-function showCallOverlay(calling) {
-    var overlay = getCallOverlay();
-    overlay.style.display = 'flex';
-    document.getElementById('call-status').textContent = calling ? 'Исходящий звонок...' : 'Звонок';
-}
-
-function showIncomingCall() {
-    document.getElementById('incoming-call').style.display = 'flex';
-}
-
-// ── Init ──
 document.addEventListener('DOMContentLoaded', function() {
     var list = document.getElementById('dm-list');
     if (list) list.scrollTop = list.scrollHeight;
