@@ -3,16 +3,16 @@ set -o errexit
 
 pip install -r requirements.txt
 
+# Verify gunicorn is accessible
+which gunicorn || python -m pip install gunicorn
+
 # Download OpenPGP.js into static files (avoid CDN dependency)
 curl -fsSL "https://cdn.jsdelivr.net/npm/openpgp@5.11.2/dist/openpgp.min.js" -o static/js/openpgp.min.js
 
 # Remove source map reference to prevent whitenoise staticfiles error
-# (any line containing sourceMappingURL, in any format)
 sed -i '/sourceMappingURL=/d' static/js/openpgp.min.js
 
-# Also create an empty .map file just in case (prevents MissingFileError)
 touch static/js/openpgp.min.js.map
 
-python manage.py showmigrations
 python manage.py migrate
 python manage.py collectstatic --noinput
