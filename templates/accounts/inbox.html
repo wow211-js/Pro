@@ -5,7 +5,7 @@
 {% block content %}
 <section class="wide-panel">
     <div class="section-heading">
-        <h1>Сообщения</h1>
+        <h1>Сообщения {% if total_unread %}<span class="unread-badge" style="position:relative;top:-2px">{{ total_unread }}</span>{% endif %}</h1>
         <a href="{% url 'new_conversation' %}" class="button-link">+ Новый диалог</a>
     </div>
 
