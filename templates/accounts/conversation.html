@@ -60,6 +60,7 @@
         {% endif %}{% empty %}<p class="empty-chat">Начните диалог!</p>{% endfor %}
     </div>
 
+    <button id="scroll-btn" onclick="scrollToBottom()" style="display:none;position:sticky;bottom:8px;left:50%;transform:translateX(-50%);background:var(--accent);color:var(--btn-text);border:none;border-radius:20px;padding:6px 16px;cursor:pointer;font-size:0.85rem;box-shadow:0 2px 8px rgba(0,0,0,0.2)">&#8595; Вниз</button>
     {% if is_blocked_by_them %}
         <div class="e2e-unlock-panel" style="text-align:center;color:var(--text-muted)">&#128683; Вы заблокированы</div>
     {% elif is_blocked_by_me %}
@@ -338,7 +339,21 @@ async function init() {
     }
 }
 
+function scrollToBottom() {
+    var list = document.getElementById('dm-list');
+    if (list) list.scrollTop = list.scrollHeight;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    // Show scroll-to-bottom button when not at bottom
+    var list = document.getElementById('dm-list');
+    var btn = document.getElementById('scroll-btn');
+    if (list && btn) {
+        list.addEventListener('scroll', function() {
+            var atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 100;
+            btn.style.display = atBottom ? 'none' : 'block';
+        });
+    }
     var list = document.getElementById('dm-list');
     if (list) list.scrollTop = list.scrollHeight;
     init();
