@@ -1134,3 +1134,24 @@ textarea::-webkit-resizer {
     color: rgba(255,255,255,0.95);
     text-shadow: 0 0 4px rgba(255,255,255,0.3);
 }
+
+/* ─── Unread badge ───────────────────────────────────────── */
+.unread-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: #ef4444;
+    color: #ffffff;
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 1;
+    vertical-align: middle;
+}
+
+.nav a:has(.unread-badge) {
+    font-weight: 700;
+}
