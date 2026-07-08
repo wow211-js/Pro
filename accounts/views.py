@@ -179,7 +179,11 @@ def inbox(request):
         for p in partners
     ], key=lambda x: x['last_msg']['created_at'] if x['last_msg'] else timezone.now(), reverse=True)
 
-    return render(request, 'accounts/inbox.html', {'conversations': conversations})
+    total_unread = sum(c['unread'] for c in conversations)
+    return render(request, 'accounts/inbox.html', {
+        'conversations': conversations,
+        'total_unread': total_unread,
+    })
 
 
 @rate_limit('dm', max_requests=20, window=60)
@@ -621,3 +625,15 @@ def reset_e2e_keys(request):
     profile.save()
     messages.success(request, 'E2E ключи сброшены. При следующем открытии диалога создайте новые.')
     return redirect('profile')
+
+
+@login_required
+def unread_count(request):
+    """Return total unread message count for nav badge."""
+    try:
+        count = DirectMessage.objects.filter(
+            recipient=request.user, is_read=False
+        ).count()
+        return JsonResponse({'count': count})
+    except Exception:
+        return JsonResponse({'count': 0})
