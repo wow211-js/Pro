@@ -20,7 +20,7 @@
         <nav class="nav">
             {% if user.is_authenticated %}
                 <a href="{% url 'profile' %}">Профиль</a>
-                <a href="{% url 'inbox' %}">Сообщения</a>
+                <a href="{% url 'inbox' %}" id="nav-messages">Сообщения <span id="unread-badge" class="unread-badge" style="display:none"></span></a>
                 {% if user.is_staff %}
                     <a href="{% url 'admin:index' %}">Админка</a>
                 {% endif %}
@@ -88,5 +88,93 @@
             });
         })();
     </script>
+<script>
+// ── Unread badge in nav ──
+{% if user.is_authenticated %}
+(function() {
+    var badge = document.getElementById('unread-badge');
+    var lastCount = 0;
+    var notifPermission = false;
+
+    function requestNotifPermission() {
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission().then(function(p) {
+                notifPermission = p === 'granted';
+            });
+        } else if (Notification.permission === 'granted') {
+            notifPermission = true;
+        }
+    }
+
+    function pollUnread() {
+        fetch('/api/unread/')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var count = data.count || 0;
+                if (badge) {
+                    if (count > 0) {
+                        badge.textContent = count > 99 ? '99+' : count;
+                        badge.style.display = 'inline-flex';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+                // Browser notification for new messages
+                if (count > lastCount && lastCount >= 0 && notifPermission) {
+                    var diff = count - lastCount;
+                    new Notification('Новое сообщение', {
+                        body: diff + ' непрочитанных сообщений',
+                        icon: '/static/favicon.ico',
+                    });
+                }
+                // Update tab title
+                if (count > 0) {
+                    document.title = '(' + count + ') ' + document.title.replace(/^\(\d+\)\s*/, '');
+                } else {
+                    document.title = document.title.replace(/^\(\d+\)\s*/, '');
+                }
+                lastCount = count;
+            }).catch(function() {});
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        requestNotifPermission();
+        pollUnread();
+        setInterval(pollUnread, 5000);
+    });
+})();
+{% endif %}
+
+// ── Relative time for <time> elements ──
+(function() {
+    function relativeTime(dateStr) {
+        var date = new Date(dateStr);
+        if (isNaN(date)) return null;
+        var diff = Math.floor((Date.now() - date) / 1000);
+        if (diff < 60) return 'только что';
+        if (diff < 3600) return Math.floor(diff / 60) + ' мин назад';
+        if (diff < 86400) return Math.floor(diff / 3600) + ' ч назад';
+        return null;
+    }
+
+    function updateTimes() {
+        document.querySelectorAll('time[datetime]').forEach(function(el) {
+            var rel = relativeTime(el.getAttribute('datetime'));
+            if (rel && !el.dataset.original) {
+                el.dataset.original = el.textContent;
+                el.title = el.textContent;
+                el.textContent = rel;
+            } else if (rel && el.dataset.original) {
+                el.textContent = rel;
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        updateTimes();
+        setInterval(updateTimes, 60000);
+    });
+})();
+</script>
 </body>
 </html>
