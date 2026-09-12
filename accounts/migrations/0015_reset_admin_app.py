@@ -18,7 +18,7 @@ def reverse_noop(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('yourapp', '0015_reset_admin_app'),  
+        ('yourapp', '0014_callsignal'),  
     ]
     operations = [
         migrations.RunPython(create_admin, reverse_noop),
